@@ -227,8 +227,11 @@ class ErbContext
     theme["interface_style"]
   end
 
-  # hex_to_term_color is defined at the top level (Object private method) and is
-  # therefore callable from within ErbContext instances without an explicit receiver.
+  # Top-level Ruby methods are private instance methods on Object. Since ErbContext
+  # inherits from Object, `super` here walks up to that top-level definition,
+  # forwarding our stored plutil configuration. This lets ERB templates call
+  # hex_to_term_color(...) without an explicit receiver while still using the
+  # ErbContext's injectable plutil_command (needed for testing).
   def hex_to_term_color(hex)
     super(hex, plutil_command: @plutil_command, env: @plutil_env)
   end
@@ -249,6 +252,8 @@ def process_erb_app(themes, app_config, erb_file, plutil_command: "plutil", plut
         themes, variant, theme_data, plutil_command: plutil_command, plutil_env: plutil_env
       )
       content  = template.result(ctx.get_binding)
+      # Default pattern produces filenames like "dark", "light", etc.
+      # Override with e.g. "solunized-%{variant}" or "%{display_name}.terminal".
       pattern  = app_config["filename_pattern"] || "%{variant}"
       filename = File.join(output_dir, format(pattern, variant: variant, display_name: theme_data["display_name"]))
       File.write(filename, content)
@@ -268,7 +273,9 @@ end
 # ---------------------------------------------------------------------------
 
 def process_all_apps(themes_yml:, apps_dir:, plutil_command: "plutil", plutil_env: {})
-  themes = load_yaml_hash(themes_yml)["themes"]
+  themes = load_yaml_hash(themes_yml).fetch("themes") do
+    raise RuntimeError, "#{themes_yml}: missing top-level 'themes' key"
+  end
 
   Dir.glob(File.join(apps_dir, "**", "theme.yml")).sort.each do |app_file|
     app_name, app_config = validate_app_config!(app_file, load_yaml_hash(app_file))

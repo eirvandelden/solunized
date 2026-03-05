@@ -287,6 +287,20 @@ class ProcessAllAppsTest < Minitest::Test
     assert_equal [], Dir.glob(File.join(terminal_output_dir, "*"))
   end
 
+  def test_raises_when_themes_key_is_missing
+    themes_yml = File.join(@tmpdir, "themes.yml")
+    File.write(themes_yml, YAML.dump({ "wrong_key" => {} }))
+
+    apps_dir = File.join(@tmpdir, "apps")
+    FileUtils.mkdir_p(apps_dir)
+
+    error = assert_raises(RuntimeError) do
+      process_all_apps(themes_yml: themes_yml, apps_dir: apps_dir)
+    end
+
+    assert_match(/missing top-level 'themes' key/, error.message)
+  end
+
   def test_rejects_unsafe_yaml_tags
     themes_yml = File.join(@tmpdir, "themes.yml")
     File.write(themes_yml, <<~YAML)

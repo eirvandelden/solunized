@@ -86,7 +86,7 @@ nova:
     bracket:
       color: dim_0
     operator:
-      color: fg_1
+      color: dim_0
     link:
       color: red
     keyword:
