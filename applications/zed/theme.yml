@@ -1,0 +1,5 @@
+zed:
+  format: erb
+  output_dir: dist/zed
+  per_theme: false
+  filename: solunized-theme.json

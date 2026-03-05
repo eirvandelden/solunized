@@ -1,0 +1,5 @@
+nvim:
+  format: erb
+  output_dir: dist/nvim/colors
+  per_theme: false
+  filename: solunized.lua

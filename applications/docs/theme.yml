@@ -1,0 +1,5 @@
+docs:
+  format: erb
+  output_dir: docs
+  per_theme: false
+  filename: colors.md

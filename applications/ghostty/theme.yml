@@ -1,0 +1,5 @@
+ghostty:
+  format: erb
+  output_dir: dist/ghostty
+  per_theme: true
+  filename_pattern: "solunized-%{variant}"

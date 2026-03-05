@@ -1,0 +1,180 @@
+nova:
+  output_dir: "dist/nova/Themes"
+  file_suffix: ".css"
+  quoted_css_properties:
+    - "-theme-display-name"
+  sections:
+    meta:
+      "-theme-display-name": display_name
+      "-theme-interface-style": interface_style
+      "-theme-accent-color": accent_color
+
+    # Terminal colours
+    terminal.black:
+      color: fg_0
+    terminal.red:
+      color: red
+    terminal.green:
+      color: green
+    terminal.yellow:
+      color: yellow
+    terminal.blue:
+      color: blue
+    terminal.magenta:
+      color: magenta
+    terminal.cyan:
+      color: cyan
+    terminal.white:
+      color: dim_0
+    terminal.bright-black:
+      color: fg_1
+    terminal.bright-red:
+      color: br_red
+    terminal.bright-green:
+      color: br_green
+    terminal.bright-yellow:
+      color: br_yellow
+    terminal.bright-blue:
+      color: br_blue
+    terminal.bright-magenta:
+      color: br_magenta
+    terminal.bright-cyan:
+      color: br_cyan
+    terminal.bright-white:
+      color: fg_1
+
+    # Window
+    meta.window:
+      background-color: bg_1
+      border-color: bg_2
+    meta.titlebar:
+      border-color: bg_1
+
+    # Document
+    meta.document:
+      background-color: bg_0
+      border-color: bg_1
+    meta.text:
+      color: fg_0
+    meta.text.invisible:
+      color: "rgba(147, 161, 161, 0.1)"
+    meta.text.selected:
+      background-color: bg_1
+    meta.cursor:
+      border-color: dim_0
+      background-color: bg_1
+    meta.indentguide:
+      border-color: bg_1
+    meta.gutter:
+      background-color: bg_0
+      border-color: bg_0
+      color: dim_0
+    meta.gutter.selected:
+      background-color: bg_1
+      color: dim_0
+
+    # Syntax styles
+    comment:
+      color: dim_0
+      font-style: italic
+    processing:
+      color: red
+      font-style: italic
+    declaration:
+      color: yellow
+      font-style: italic
+    bracket:
+      color: dim_0
+    operator:
+      color: dim_0
+    link:
+      color: red
+    keyword:
+      color: dim_0
+      font-style: italic
+    invalid:
+      background-color: red
+
+    # Identifiers
+    identifier.global:
+      color: orange
+    identifier.constant:
+      color: orange
+    identifier.variable:
+      color: magenta
+    identifier.type:
+      color: orange
+    identifier.function:
+      color: blue
+    identifier.property:
+      color: blue
+    identifier.method:
+      color: blue
+    identifier.core.method:
+      color: orange
+    identifier.argument:
+      color: green
+    identifier.key:
+      color: br_blue
+      font-style: italic
+    identifier.name:
+      color: blue
+    identifier.type.superclass:
+      color: yellow
+    identifier.class.type.name:
+      color: blue
+    identifier.class.type.module.name:
+      color: yellow
+    identifier.type.superclass.module:
+      color: orange
+
+    # Strings and literals
+    string:
+      color: green
+    string.key:
+      color: red
+    regex:
+      color: red
+    cdata:
+      color: fg_0
+
+    # Markup
+    markup.heading:
+      color: blue
+      font-weight: bold
+    markup.line:
+      color: dim_0
+    markup.bold:
+      color: magenta
+      font-weight: bold
+    markup.italic:
+      color: red
+      font-style: italic
+    markup.strikethrough:
+      color: dim_0
+    markup.list.item:
+      color: red
+    markup.code:
+      color: cyan
+      background-color: bg_0
+    markup.link:
+      color: red
+
+    # Tags
+    tag:
+      color: dim_0
+    tag.attribute.name:
+      color: fg_0
+      font-style: italic
+    tag.attribute.value:
+      color: green
+    tag.framework:
+      color: dim_0
+
+    # Style
+    style.at:
+      color: red
+    style.value.number:
+      color: orange
+    style.string:
+      color: fg_0
