@@ -1,0 +1,5 @@
+terminal:
+  format: erb
+  output_dir: dist/terminal
+  per_theme: true
+  filename_pattern: "%{display_name}.terminal"

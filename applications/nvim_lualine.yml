@@ -1,0 +1,5 @@
+nvim_lualine:
+  format: erb
+  output_dir: dist/nvim/lua/lualine/themes
+  per_theme: false
+  filename: solunized.lua

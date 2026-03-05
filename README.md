@@ -48,7 +48,7 @@ ruby generate_themes.rb
 
 This reads `themes.yml` and all files in `applications/`, then produces:
 
-- `output/<app>/` — application-specific theme files (e.g. Nova CSS files)
+- `dist/<app>/` (or another configured `output_dir`) — application-specific theme files
 - `docs/colors.md` — AI-readable markdown with colour tables for all variants
 
 ### Adding a new application

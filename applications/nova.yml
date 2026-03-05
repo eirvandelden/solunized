@@ -1,6 +1,8 @@
 nova:
-  output_dir: "output/nova/Themes"
+  output_dir: "dist/nova/Themes"
   file_suffix: ".css"
+  quoted_css_properties:
+    - "-theme-display-name"
   sections:
     meta:
       "-theme-display-name": display_name
@@ -23,7 +25,7 @@ nova:
     terminal.cyan:
       color: cyan
     terminal.white:
-      color: bg_0
+      color: dim_0
     terminal.bright-black:
       color: fg_1
     terminal.bright-red:
@@ -39,7 +41,7 @@ nova:
     terminal.bright-cyan:
       color: br_cyan
     terminal.bright-white:
-      color: bg_1
+      color: fg_1
 
     # Window
     meta.window:
