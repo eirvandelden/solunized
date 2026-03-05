@@ -2,6 +2,7 @@ require "minitest/autorun"
 require "tmpdir"
 require "yaml"
 require "base64"
+require "json"
 require "stringio"
 
 require_relative "../generate_themes"
@@ -215,6 +216,23 @@ class ProcessErbAppTest < Minitest::Test
     assert_equal "dark\n",  File.read(File.join(@tmpdir, "out", "dark.txt"))
     assert_equal "light\n", File.read(File.join(@tmpdir, "out", "light.txt"))
   end
+
+  def test_raises_for_unknown_colour_key_in_erb_template
+    erb_file = File.join(@tmpdir, "test.erb")
+    File.write(erb_file, "<%= c(variant, 'missing_colour') %>\n")
+
+    config = {
+      "output_dir"       => File.join(@tmpdir, "out"),
+      "per_theme"        => true,
+      "filename_pattern" => "%{variant}.txt"
+    }
+
+    error = assert_raises(RuntimeError) do
+      process_erb_app(THEMES, config, erb_file)
+    end
+
+    assert_match(/Unknown colour key/, error.message)
+  end
 end
 
 # ---------------------------------------------------------------------------
@@ -285,6 +303,123 @@ class ProcessAllAppsTest < Minitest::Test
     end
 
     assert_match(/Invalid YAML/, error.message)
+  end
+
+  def test_ignores_non_theme_yaml_files
+    themes_yml = File.join(@tmpdir, "themes.yml")
+    File.write(themes_yml, YAML.dump({ "themes" => THEMES }))
+
+    apps_dir = File.join(@tmpdir, "apps")
+    docs_dir = File.join(apps_dir, "docs")
+    FileUtils.mkdir_p(docs_dir)
+
+    File.write(File.join(docs_dir, "theme.yml"), <<~YAML)
+      docs:
+        format: erb
+        output_dir: #{@tmpdir}/out/docs
+        per_theme: false
+        filename: colors.md
+    YAML
+    File.write(File.join(docs_dir, "theme.erb"), "ok\n")
+    File.write(File.join(docs_dir, "notes.yml"), "foo: bar\n")
+
+    process_all_apps(themes_yml: themes_yml, apps_dir: apps_dir)
+
+    assert File.exist?(File.join(@tmpdir, "out", "docs", "colors.md"))
+  end
+
+  def test_rejects_invalid_app_config
+    themes_yml = File.join(@tmpdir, "themes.yml")
+    File.write(themes_yml, YAML.dump({ "themes" => THEMES }))
+
+    apps_dir = File.join(@tmpdir, "apps")
+    invalid_dir = File.join(apps_dir, "invalid")
+    FileUtils.mkdir_p(invalid_dir)
+
+    File.write(File.join(invalid_dir, "theme.yml"), <<~YAML)
+      invalid:
+        output_dir: #{@tmpdir}/out/invalid
+    YAML
+
+    error = assert_raises(RuntimeError) do
+      process_all_apps(themes_yml: themes_yml, apps_dir: apps_dir)
+    end
+
+    assert_match(/Invalid config/, error.message)
+  end
+end
+
+# ---------------------------------------------------------------------------
+# full application integration
+# ---------------------------------------------------------------------------
+
+class FullApplicationIntegrationTest < Minitest::Test
+  def setup
+    @tmpdir = Dir.mktmpdir
+    @workspace_root = File.expand_path("..", __dir__)
+  end
+
+  def teardown
+    FileUtils.rm_rf(@tmpdir)
+  end
+
+  def test_generates_real_templates_and_validates_zed_json
+    themes_yml = File.join(@workspace_root, "themes.yml")
+    apps_dir = copy_apps_with_tmp_outputs
+
+    process_all_apps(themes_yml: themes_yml, apps_dir: apps_dir, plutil_command: "missing-plutil-command")
+
+    assert File.exist?(File.join(@tmpdir, "out", "docs", "colors.md"))
+    assert File.exist?(File.join(@tmpdir, "out", "nvim", "colors", "solunized.lua"))
+    assert File.exist?(File.join(@tmpdir, "out", "nvim_lualine", "solunized.lua"))
+    assert File.exist?(File.join(@tmpdir, "out", "zed", "solunized-theme.json"))
+    assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "ghostty", "*")).size
+    assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "nova", "*.css")).size
+    assert_equal [], Dir.glob(File.join(@tmpdir, "out", "terminal", "*"))
+
+    zed_json = File.read(File.join(@tmpdir, "out", "zed", "solunized-theme.json"))
+    parsed = JSON.parse(zed_json)
+    assert_equal "Solunized", parsed.fetch("name")
+    assert_equal 4, parsed.fetch("themes").size
+  end
+
+  private
+
+  def copy_apps_with_tmp_outputs
+    src_apps = File.join(@workspace_root, "applications")
+    dest_apps = File.join(@tmpdir, "apps")
+    FileUtils.cp_r(src_apps, dest_apps)
+
+    Dir.glob(File.join(dest_apps, "**", "theme.yml")).each do |theme_file|
+      config = YAML.load_file(theme_file)
+      app_name = config.keys.fetch(0)
+      app_config = config.fetch(app_name)
+      app_config["output_dir"] = mapped_output_dir(app_name)
+      File.write(theme_file, YAML.dump(config))
+    end
+
+    dest_apps
+  end
+
+  def mapped_output_dir(app_name)
+    case app_name
+    when "docs"
+      File.join(@tmpdir, "out", "docs")
+    when "ghostty"
+      File.join(@tmpdir, "out", "ghostty")
+    when "nova"
+      File.join(@tmpdir, "out", "nova")
+    when "nvim"
+      File.join(@tmpdir, "out", "nvim", "colors")
+    when "nvim_lualine"
+      File.join(@tmpdir, "out", "nvim_lualine")
+    when "terminal"
+      File.join(@tmpdir, "out", "terminal")
+    when "zed"
+      File.join(@tmpdir, "out", "zed")
+    else
+      raise "Unhandled app #{app_name}"
+    end
   end
 end
 

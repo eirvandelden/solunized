@@ -31,6 +31,54 @@ rescue Psych::Exception => e
   raise RuntimeError, "Invalid YAML in #{path}: #{e.message}"
 end
 
+def validate_app_config!(app_file, raw_config)
+  unless raw_config.is_a?(Hash) && raw_config.size == 1
+    raise RuntimeError, "Invalid config in #{app_file}: expected exactly one top-level application key"
+  end
+
+  app_name = raw_config.keys.first
+  app_config = raw_config[app_name]
+  unless app_config.is_a?(Hash)
+    raise RuntimeError, "Invalid config in #{app_file}: application '#{app_name}' must map to a hash"
+  end
+
+  output_dir = app_config["output_dir"]
+  if !output_dir.is_a?(String) || output_dir.strip.empty?
+    raise RuntimeError, "Invalid config in #{app_file}: application '#{app_name}' requires output_dir"
+  end
+
+  if app_config["format"] == "erb"
+    validate_erb_config!(app_file, app_name, app_config)
+  else
+    validate_css_config!(app_file, app_name, app_config)
+  end
+
+  [ app_name, app_config ]
+end
+
+def validate_css_config!(app_file, app_name, app_config)
+  sections = app_config["sections"]
+  return if sections.is_a?(Hash)
+
+  raise RuntimeError, "Invalid config in #{app_file}: application '#{app_name}' requires a sections hash"
+end
+
+def validate_erb_config!(app_file, app_name, app_config)
+  per_theme = app_config["per_theme"]
+  unless per_theme == true || per_theme == false
+    raise RuntimeError, "Invalid config in #{app_file}: application '#{app_name}' requires per_theme: true|false"
+  end
+
+  if !per_theme && (!app_config["filename"].is_a?(String) || app_config["filename"].strip.empty?)
+    raise RuntimeError, "Invalid config in #{app_file}: application '#{app_name}' requires filename"
+  end
+
+  erb_file = app_file.sub(/\.yml$/, ".erb")
+  return if File.exist?(erb_file)
+
+  raise RuntimeError, "Invalid config in #{app_file}: missing template #{erb_file}"
+end
+
 # ---------------------------------------------------------------------------
 # CSS path (Nova)
 # ---------------------------------------------------------------------------
@@ -151,12 +199,32 @@ class ErbContext
 
   # Look up a colour hex value for a given variant and colour key.
   def c(v, name)
-    @themes[v.to_s]["colors"][name.to_s]
+    variant_key = v.to_s
+    theme = @themes[variant_key]
+    unless theme.is_a?(Hash)
+      raise RuntimeError, "Unknown theme variant '#{variant_key}'"
+    end
+
+    colors = theme["colors"]
+    unless colors.is_a?(Hash)
+      raise RuntimeError, "Theme '#{variant_key}' has no colors mapping"
+    end
+
+    color_key = name.to_s
+    return colors[color_key] if colors.key?(color_key)
+
+    raise RuntimeError, "Unknown colour key '#{color_key}' for variant '#{variant_key}'"
   end
 
   # Return the interface style ("dark" or "light") for a given variant.
   def appearance(v)
-    @themes[v.to_s]["interface_style"]
+    variant_key = v.to_s
+    theme = @themes[variant_key]
+    unless theme.is_a?(Hash)
+      raise RuntimeError, "Unknown theme variant '#{variant_key}'"
+    end
+
+    theme["interface_style"]
   end
 
   # hex_to_term_color is defined at the top level (Object private method) and is
@@ -202,17 +270,16 @@ end
 def process_all_apps(themes_yml:, apps_dir:, plutil_command: "plutil", plutil_env: {})
   themes = load_yaml_hash(themes_yml)["themes"]
 
-  Dir.glob(File.join(apps_dir, "**", "*.yml")).sort.each do |app_file|
-    app_config = load_yaml_hash(app_file)
-    app_name   = app_config.keys.first
+  Dir.glob(File.join(apps_dir, "**", "theme.yml")).sort.each do |app_file|
+    app_name, app_config = validate_app_config!(app_file, load_yaml_hash(app_file))
     puts "Processing application: #{app_name}"
 
-    if app_config[app_name]["format"] == "erb"
+    if app_config["format"] == "erb"
       erb_file = app_file.sub(/\.yml$/, ".erb")
       begin
         process_erb_app(
           themes,
-          app_config[app_name],
+          app_config,
           erb_file,
           plutil_command: plutil_command,
           plutil_env: plutil_env
@@ -221,7 +288,7 @@ def process_all_apps(themes_yml:, apps_dir:, plutil_command: "plutil", plutil_en
         warn "Skipping #{app_name}: #{e.message}"
       end
     else
-      generate_app_themes(themes, app_config[app_name])
+      generate_app_themes(themes, app_config)
     end
   end
 end
