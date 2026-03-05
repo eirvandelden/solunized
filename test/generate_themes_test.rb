@@ -2,6 +2,7 @@ require "minitest/autorun"
 require "tmpdir"
 require "yaml"
 require "base64"
+require "stringio"
 
 require_relative "../generate_themes"
 
@@ -139,7 +140,7 @@ class ApplicationConfigIntegrationTest < Minitest::Test
 
   def test_nova_terminal_palette_matches_terminal_semantics
     themes = YAML.load_file(File.expand_path("../themes.yml", __dir__))["themes"]
-    config = YAML.load_file(File.expand_path("../applications/nova.yml", __dir__))["nova"]
+    config = YAML.load_file(File.expand_path("../applications/nova/theme.yml", __dir__))["nova"]
     config["output_dir"] = @tmpdir
 
     generate_app_themes(themes, config)
@@ -217,11 +218,92 @@ class ProcessErbAppTest < Minitest::Test
 end
 
 # ---------------------------------------------------------------------------
+# process_all_apps
+# ---------------------------------------------------------------------------
+
+class ProcessAllAppsTest < Minitest::Test
+  def setup
+    @tmpdir = Dir.mktmpdir
+  end
+
+  def teardown
+    FileUtils.rm_rf(@tmpdir)
+  end
+
+  def test_skips_terminal_template_when_plutil_is_unavailable
+    themes_yml = File.join(@tmpdir, "themes.yml")
+    File.write(themes_yml, YAML.dump({ "themes" => THEMES }))
+
+    apps_dir = File.join(@tmpdir, "apps")
+    FileUtils.mkdir_p(apps_dir)
+
+    docs_output_dir = File.join(@tmpdir, "out", "docs")
+    terminal_output_dir = File.join(@tmpdir, "out", "terminal")
+
+    docs_dir = File.join(apps_dir, "docs")
+    terminal_dir = File.join(apps_dir, "terminal")
+    FileUtils.mkdir_p(docs_dir)
+    FileUtils.mkdir_p(terminal_dir)
+
+    File.write(File.join(docs_dir, "theme.yml"), <<~YAML)
+      docs:
+        format: erb
+        output_dir: #{docs_output_dir}
+        per_theme: false
+        filename: colors.md
+    YAML
+    File.write(File.join(docs_dir, "theme.erb"), "<%= themes.keys.join(',') %>\n")
+
+    File.write(File.join(terminal_dir, "theme.yml"), <<~YAML)
+      terminal:
+        format: erb
+        output_dir: #{terminal_output_dir}
+        per_theme: true
+        filename_pattern: "%{variant}.terminal"
+    YAML
+    File.write(File.join(terminal_dir, "theme.erb"), "<%= hex_to_term_color(c(variant, 'bg_0')) %>\n")
+
+    process_all_apps(themes_yml: themes_yml, apps_dir: apps_dir, plutil_command: "missing-plutil-command")
+
+    assert File.exist?(File.join(docs_output_dir, "colors.md"))
+    assert_equal [], Dir.glob(File.join(terminal_output_dir, "*"))
+  end
+
+  def test_rejects_unsafe_yaml_tags
+    themes_yml = File.join(@tmpdir, "themes.yml")
+    File.write(themes_yml, <<~YAML)
+      --- !ruby/object:OpenStruct
+      table:
+        themes: {}
+    YAML
+
+    apps_dir = File.join(@tmpdir, "apps")
+    FileUtils.mkdir_p(apps_dir)
+
+    error = assert_raises(RuntimeError) do
+      process_all_apps(themes_yml: themes_yml, apps_dir: apps_dir)
+    end
+
+    assert_match(/Invalid YAML/, error.message)
+  end
+end
+
+# ---------------------------------------------------------------------------
 # hex_to_term_color round-trip
 # ---------------------------------------------------------------------------
 
 class HexToTermColorTest < Minitest::Test
+  def test_raises_argument_error_for_invalid_hex
+    error = assert_raises(ArgumentError) do
+      hex_to_term_color("invalid-color")
+    end
+
+    assert_match(/Expected a hex color/, error.message)
+  end
+
   def test_roundtrip_components
+    require_plutil!
+
     base64_data = hex_to_term_color("#ff8000")
 
     binary = Base64.decode64(base64_data)
@@ -243,6 +325,8 @@ class HexToTermColorTest < Minitest::Test
   end
 
   def test_black_and_white
+    require_plutil!
+
     # #000000 → all zeros
     xml_black = roundtrip_to_xml("#000000")
     r, g, b   = extract_rgb(xml_black)
@@ -258,7 +342,21 @@ class HexToTermColorTest < Minitest::Test
     assert_in_delta 1.0, b, 0.001
   end
 
+  def test_raises_clear_error_when_plutil_is_missing
+    error = assert_raises(RuntimeError) do
+      hex_to_term_color("#ff8000", plutil_command: "missing-plutil-command")
+    end
+
+    assert_match(/plutil/, error.message)
+  end
+
   private
+
+  def require_plutil!
+    return if system("command -v plutil >/dev/null 2>&1")
+
+    skip "plutil is not available"
+  end
 
   def roundtrip_to_xml(hex)
     binary = Base64.decode64(hex_to_term_color(hex))
