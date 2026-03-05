@@ -31,6 +31,23 @@ rescue Psych::Exception => e
   raise RuntimeError, "Invalid YAML in #{path}: #{e.message}"
 end
 
+def validate_themes!(themes_yml, themes)
+  unless themes.is_a?(Hash) && !themes.empty?
+    raise RuntimeError, "#{themes_yml}: top-level 'themes' must be a non-empty mapping"
+  end
+
+  themes.each do |variant, theme_data|
+    unless theme_data.is_a?(Hash)
+      raise RuntimeError, "#{themes_yml}: theme '#{variant}' must map to a hash"
+    end
+
+    colors = theme_data["colors"]
+    next if colors.is_a?(Hash) && !colors.empty?
+
+    raise RuntimeError, "#{themes_yml}: theme '#{variant}' must include a non-empty colors mapping"
+  end
+end
+
 def validate_app_config!(app_file, raw_config)
   unless raw_config.is_a?(Hash) && raw_config.size == 1
     raise RuntimeError, "Invalid config in #{app_file}: expected exactly one top-level application key"
@@ -276,6 +293,7 @@ def process_all_apps(themes_yml:, apps_dir:, plutil_command: "plutil", plutil_en
   themes = load_yaml_hash(themes_yml).fetch("themes") do
     raise RuntimeError, "#{themes_yml}: missing top-level 'themes' key"
   end
+  validate_themes!(themes_yml, themes)
 
   Dir.glob(File.join(apps_dir, "**", "theme.yml")).sort.each do |app_file|
     app_name, app_config = validate_app_config!(app_file, load_yaml_hash(app_file))

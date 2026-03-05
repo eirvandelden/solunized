@@ -301,6 +301,34 @@ class ProcessAllAppsTest < Minitest::Test
     assert_match(/missing top-level 'themes' key/, error.message)
   end
 
+  def test_raises_when_themes_is_not_a_hash
+    themes_yml = File.join(@tmpdir, "themes.yml")
+    File.write(themes_yml, YAML.dump({ "themes" => [] }))
+
+    apps_dir = File.join(@tmpdir, "apps")
+    FileUtils.mkdir_p(apps_dir)
+
+    error = assert_raises(RuntimeError) do
+      process_all_apps(themes_yml: themes_yml, apps_dir: apps_dir)
+    end
+
+    assert_match(/'themes' must be a non-empty mapping/, error.message)
+  end
+
+  def test_raises_when_a_theme_has_no_colors_mapping
+    themes_yml = File.join(@tmpdir, "themes.yml")
+    File.write(themes_yml, YAML.dump({ "themes" => { "dark" => { "display_name" => "Broken" } } }))
+
+    apps_dir = File.join(@tmpdir, "apps")
+    FileUtils.mkdir_p(apps_dir)
+
+    error = assert_raises(RuntimeError) do
+      process_all_apps(themes_yml: themes_yml, apps_dir: apps_dir)
+    end
+
+    assert_match(/must include a non-empty colors mapping/, error.message)
+  end
+
   def test_rejects_unsafe_yaml_tags
     themes_yml = File.join(@tmpdir, "themes.yml")
     File.write(themes_yml, <<~YAML)
