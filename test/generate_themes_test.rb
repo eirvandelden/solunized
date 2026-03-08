@@ -392,6 +392,87 @@ class ProcessAllAppsTest < Minitest::Test
 end
 
 # ---------------------------------------------------------------------------
+# mvpa-css application
+# ---------------------------------------------------------------------------
+
+class MvpaCssApplicationTest < Minitest::Test
+  EXPECTED_VARIABLES = %w[
+    --color-bg-0 --color-bg-1 --color-bg-2
+    --color-dim-0 --color-fg-0 --color-fg-1
+    --color-red --color-green --color-yellow --color-blue
+    --color-magenta --color-cyan --color-orange --color-violet
+    --color-br-red --color-br-green --color-br-yellow --color-br-blue
+    --color-br-magenta --color-br-cyan --color-br-orange --color-br-violet
+  ].freeze
+
+  def setup
+    @tmpdir = Dir.mktmpdir
+    @workspace_root = File.expand_path("..", __dir__)
+    @themes = YAML.load_file(File.join(@workspace_root, "themes.yml"))["themes"]
+
+    config = YAML.load_file(File.join(@workspace_root, "applications/mvpa-css/theme.yml"))["mvpa_css"]
+    config["output_dir"] = @tmpdir
+    erb_file = File.join(@workspace_root, "applications/mvpa-css/theme.erb")
+
+    process_erb_app(@themes, config, erb_file)
+
+    @css_by_variant = @themes.keys.to_h do |variant|
+      [ variant, File.read(File.join(@tmpdir, "solunized-#{variant}.css")) ]
+    end
+  end
+
+  def teardown
+    FileUtils.rm_rf(@tmpdir)
+  end
+
+  def test_generates_one_file_per_variant
+    assert_equal @themes.size, Dir.glob(File.join(@tmpdir, "solunized-*.css")).size
+  end
+
+  def test_each_file_has_exactly_22_variables
+    @themes.each_key do |variant|
+      assert_equal EXPECTED_VARIABLES.size, css_variable_lines(@css_by_variant[variant]).size,
+        "Expected #{EXPECTED_VARIABLES.size} variables in solunized-#{variant}.css"
+    end
+  end
+
+  def test_all_variants_define_the_same_variable_names
+    variable_names_per_variant = @themes.keys.map do |variant|
+      css_variable_lines(@css_by_variant[variant]).map { |l| l.match(/(--color-[\w-]+)/)[1] }.sort
+    end
+
+    assert_equal 1, variable_names_per_variant.uniq.size, "Variable names differ across variants"
+  end
+
+  def test_all_expected_variables_are_present
+    EXPECTED_VARIABLES.each do |variable|
+      assert_includes @css_by_variant["dark"], variable
+    end
+  end
+
+  def test_selector_uses_data_theme_attribute
+    @themes.each_key do |variant|
+      assert_match(/\[data-theme="solunized-#{variant}"\]/, @css_by_variant[variant])
+    end
+  end
+
+  def test_values_match_themes_yml
+    @themes.each do |variant, theme_data|
+      css = @css_by_variant[variant]
+      assert_includes css, "--color-bg-0: #{theme_data['colors']['bg_0']};"
+      assert_includes css, "--color-red: #{theme_data['colors']['red']};"
+      assert_includes css, "--color-br-violet: #{theme_data['colors']['br_violet']};"
+    end
+  end
+
+  private
+
+  def css_variable_lines(css)
+    css.lines.grep(/^\s+--color-/)
+  end
+end
+
+# ---------------------------------------------------------------------------
 # full application integration
 # ---------------------------------------------------------------------------
 
@@ -417,6 +498,7 @@ class FullApplicationIntegrationTest < Minitest::Test
     assert File.exist?(File.join(@tmpdir, "out", "zed", "solunized-theme.json"))
     assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "ghostty", "*")).size
     assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "nova", "*.css")).size
+    assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "mvpa-css", "*.css")).size
     assert_equal [], Dir.glob(File.join(@tmpdir, "out", "terminal", "*"))
 
     zed_json = File.read(File.join(@tmpdir, "out", "zed", "solunized-theme.json"))
@@ -459,6 +541,8 @@ class FullApplicationIntegrationTest < Minitest::Test
       File.join(@tmpdir, "out", "terminal")
     when "zed"
       File.join(@tmpdir, "out", "zed")
+    when "mvpa_css"
+      File.join(@tmpdir, "out", "mvpa-css")
     else
       raise "Unhandled app #{app_name}"
     end

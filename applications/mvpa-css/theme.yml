@@ -1,0 +1,5 @@
+mvpa_css:
+  format: erb
+  output_dir: dist/mvpa-css
+  per_theme: true
+  filename_pattern: "solunized-%{variant}.css"
