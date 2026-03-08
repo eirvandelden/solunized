@@ -8,8 +8,8 @@ themes:
       bg_1:     "#0d3b4a"
       bg_2:     "#2a5d6e"
       dim_0:    "#5e8c96"
-      fg_0:     "#9bbec5"
-      fg_1:     "#b8d1d6"
+      fg_0:     "#b0d0d5"
+      fg_1:     "#cce2e7"
       red:      "#f7564f"
       green:    "#73b936"
       yellow:   "#d9b02a"
@@ -32,12 +32,12 @@ themes:
     interface_style: light
     accent_color: true
     colors:
-      bg_0:     "#f5f9fa"
+      bg_0:     "#fafcfd"
       bg_1:     "#e4ecef"
       bg_2:     "#c5d5da"
       dim_0:    "#7d9da4"
-      fg_0:     "#445f66"
-      fg_1:     "#2c4750"
+      fg_0:     "#314d55"
+      fg_1:     "#1b2e37"
       red:      "#c51f23"
       green:    "#3d8700"
       yellow:   "#9e7c00"
