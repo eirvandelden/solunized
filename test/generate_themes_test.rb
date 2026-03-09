@@ -392,6 +392,40 @@ class ProcessAllAppsTest < Minitest::Test
 end
 
 # ---------------------------------------------------------------------------
+# hex_to_oklch
+# ---------------------------------------------------------------------------
+
+class HexToOklchTest < Minitest::Test
+  def test_black_produces_zero_lightness_and_chroma
+    l, c, _h = parse_oklch(hex_to_oklch("#000000"))
+    assert_in_delta 0.0,   l, 0.01
+    assert_in_delta 0.0,   c, 0.0001
+  end
+
+  def test_white_produces_full_lightness_and_zero_chroma
+    l, c, _h = parse_oklch(hex_to_oklch("#ffffff"))
+    assert_in_delta 100.0, l, 0.01
+    assert_in_delta 0.0,   c, 0.0001
+  end
+
+  def test_output_is_valid_css_oklch_format
+    assert_match(/\Aoklch\(\d+\.\d+% \d+\.\d+ \d+\.\d+\)\z/, hex_to_oklch("#4191f4"))
+  end
+
+  def test_raises_argument_error_for_invalid_hex
+    error = assert_raises(ArgumentError) { hex_to_oklch("not-a-hex") }
+    assert_match(/Expected a hex color/, error.message)
+  end
+
+  private
+
+  def parse_oklch(str)
+    m = str.match(/oklch\((\d+\.\d+)% (\d+\.\d+) (\d+\.\d+)\)/)
+    [ m[1].to_f, m[2].to_f, m[3].to_f ]
+  end
+end
+
+# ---------------------------------------------------------------------------
 # mvpa-css application
 # ---------------------------------------------------------------------------
 
@@ -459,9 +493,9 @@ class MvpaCssApplicationTest < Minitest::Test
   def test_values_match_themes_yml
     @themes.each do |variant, theme_data|
       css = @css_by_variant[variant]
-      assert_includes css, "--color-bg-0: #{theme_data['colors']['bg_0']};"
-      assert_includes css, "--color-red: #{theme_data['colors']['red']};"
-      assert_includes css, "--color-br-violet: #{theme_data['colors']['br_violet']};"
+      assert_includes css, "--color-bg-0: #{hex_to_oklch(theme_data['colors']['bg_0'])};"
+      assert_includes css, "--color-red: #{hex_to_oklch(theme_data['colors']['red'])};"
+      assert_includes css, "--color-br-violet: #{hex_to_oklch(theme_data['colors']['br_violet'])};"
     end
   end
 
