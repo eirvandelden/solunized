@@ -3,32 +3,32 @@
 
 [data-theme="solunized-<%= variant %>"] {
   /* Backgrounds */
-  --color-bg-0: <%= c(variant, 'bg_0') %>;
-  --color-bg-1: <%= c(variant, 'bg_1') %>;
-  --color-bg-2: <%= c(variant, 'bg_2') %>;
+  --color-bg-0: <%= hex_to_oklch(c(variant, 'bg_0')) %>;
+  --color-bg-1: <%= hex_to_oklch(c(variant, 'bg_1')) %>;
+  --color-bg-2: <%= hex_to_oklch(c(variant, 'bg_2')) %>;
 
   /* Foregrounds */
-  --color-dim-0: <%= c(variant, 'dim_0') %>;
-  --color-fg-0: <%= c(variant, 'fg_0') %>;
-  --color-fg-1: <%= c(variant, 'fg_1') %>;
+  --color-dim-0: <%= hex_to_oklch(c(variant, 'dim_0')) %>;
+  --color-fg-0: <%= hex_to_oklch(c(variant, 'fg_0')) %>;
+  --color-fg-1: <%= hex_to_oklch(c(variant, 'fg_1')) %>;
 
   /* Accent colors */
-  --color-red: <%= c(variant, 'red') %>;
-  --color-green: <%= c(variant, 'green') %>;
-  --color-yellow: <%= c(variant, 'yellow') %>;
-  --color-blue: <%= c(variant, 'blue') %>;
-  --color-magenta: <%= c(variant, 'magenta') %>;
-  --color-cyan: <%= c(variant, 'cyan') %>;
-  --color-orange: <%= c(variant, 'orange') %>;
-  --color-violet: <%= c(variant, 'violet') %>;
+  --color-red: <%= hex_to_oklch(c(variant, 'red')) %>;
+  --color-green: <%= hex_to_oklch(c(variant, 'green')) %>;
+  --color-yellow: <%= hex_to_oklch(c(variant, 'yellow')) %>;
+  --color-blue: <%= hex_to_oklch(c(variant, 'blue')) %>;
+  --color-magenta: <%= hex_to_oklch(c(variant, 'magenta')) %>;
+  --color-cyan: <%= hex_to_oklch(c(variant, 'cyan')) %>;
+  --color-orange: <%= hex_to_oklch(c(variant, 'orange')) %>;
+  --color-violet: <%= hex_to_oklch(c(variant, 'violet')) %>;
 
   /* Bright accent colors */
-  --color-br-red: <%= c(variant, 'br_red') %>;
-  --color-br-green: <%= c(variant, 'br_green') %>;
-  --color-br-yellow: <%= c(variant, 'br_yellow') %>;
-  --color-br-blue: <%= c(variant, 'br_blue') %>;
-  --color-br-magenta: <%= c(variant, 'br_magenta') %>;
-  --color-br-cyan: <%= c(variant, 'br_cyan') %>;
-  --color-br-orange: <%= c(variant, 'br_orange') %>;
-  --color-br-violet: <%= c(variant, 'br_violet') %>;
+  --color-br-red: <%= hex_to_oklch(c(variant, 'br_red')) %>;
+  --color-br-green: <%= hex_to_oklch(c(variant, 'br_green')) %>;
+  --color-br-yellow: <%= hex_to_oklch(c(variant, 'br_yellow')) %>;
+  --color-br-blue: <%= hex_to_oklch(c(variant, 'br_blue')) %>;
+  --color-br-magenta: <%= hex_to_oklch(c(variant, 'br_magenta')) %>;
+  --color-br-cyan: <%= hex_to_oklch(c(variant, 'br_cyan')) %>;
+  --color-br-orange: <%= hex_to_oklch(c(variant, 'br_orange')) %>;
+  --color-br-violet: <%= hex_to_oklch(c(variant, 'br_violet')) %>;
 }

@@ -135,6 +135,41 @@ end
 # ERB path
 # ---------------------------------------------------------------------------
 
+# Converts a hex color to a CSS oklch() string.
+def hex_to_oklch(hex)
+  unless hex.is_a?(String) && hex.match?(HEX_COLOR_PATTERN)
+    raise ArgumentError, "Expected a hex color in #RRGGBB format, got: #{hex.inspect}"
+  end
+
+  r, g, b = hex.delete_prefix("#").scan(/../).map { |c| c.to_i(16) / 255.0 }
+
+  # Linearize sRGB
+  to_linear = ->(v) { v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055)**2.4 }
+  rl, gl, bl = to_linear.call(r), to_linear.call(g), to_linear.call(b)
+
+  # Linear sRGB → LMS (Oklab M1 matrix)
+  l = 0.4122214708 * rl + 0.5363325363 * gl + 0.0514459929 * bl
+  m = 0.2119034982 * rl + 0.6806995451 * gl + 0.1073969566 * bl
+  s = 0.0883024619 * rl + 0.2817188376 * gl + 0.6299787005 * bl
+
+  # Cube root
+  l_ = Math.cbrt(l)
+  m_ = Math.cbrt(m)
+  s_ = Math.cbrt(s)
+
+  # LMS³ → OKLab (M2 matrix)
+  ok_l = 0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_
+  ok_a = 1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_
+  ok_b = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_
+
+  # OKLab → OKLCH
+  c = Math.sqrt(ok_a**2 + ok_b**2)
+  h = Math.atan2(ok_b, ok_a) * 180.0 / Math::PI
+  h += 360.0 if h < 0
+
+  format("oklch(%.2f%% %.4f %.2f)", ok_l * 100.0, c, h)
+end
+
 # Converts a hex color to a Base64-encoded binary NSKeyedArchiver NSColor plist
 # for embedding in macOS .terminal XML plists.
 def hex_to_term_color(hex, plutil_command: "plutil", env: {})
