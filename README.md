@@ -77,6 +77,7 @@ still generated.
 | [Neovim Lualine](https://github.com/nvim-lualine/lualine.nvim) | [`applications/nvim_lualine/theme.yml`](applications/nvim_lualine/theme.yml) |
 | [Terminal.app](https://support.apple.com/guide/terminal/welcome/mac) | [`applications/terminal/theme.yml`](applications/terminal/theme.yml) |
 | [Zed](https://zed.dev) | [`applications/zed/theme.yml`](applications/zed/theme.yml) |
+| Herdr | [`applications/herdr/theme.yml`](applications/herdr/theme.yml) |
 
 ## Licence
 

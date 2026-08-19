@@ -1,0 +1,5 @@
+herdr:
+  format: erb
+  output_dir: dist/herdr
+  per_theme: true
+  filename_pattern: "solunized-%{variant}.toml"
