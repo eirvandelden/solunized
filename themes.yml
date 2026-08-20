@@ -10,7 +10,7 @@ themes:
       dim_0:    "#5e8c96"
       fg_0:     "#b0d0d5"
       fg_1:     "#cce2e7"
-      red:      "#c51f23"
+      red:      "#f7564f"
       green:    "#73b936"
       yellow:   "#d9b02a"
       blue:     "#4191f4"
@@ -18,7 +18,7 @@ themes:
       cyan:     "#3fc4b6"
       orange:   "#ea8347"
       violet:   "#ac85e8"
-      br_red:      "#b81a1e"
+      br_red:      "#ff6a60"
       br_green:    "#81c745"
       br_yellow:   "#e8be39"
       br_blue:     "#56a0fc"
@@ -26,6 +26,8 @@ themes:
       br_cyan:     "#51d4c4"
       br_orange:   "#fa9253"
       br_violet:   "#ba93f7"
+      red_muted:    "#c51f23"
+      br_red_muted: "#b81a1e"
 
   light:
     display_name: "Solunized Light"
@@ -54,6 +56,8 @@ themes:
       br_cyan:     "#007d76"
       br_orange:   "#a44910"
       br_violet:   "#6e52b5"
+      red_muted:    "#c51f23"
+      br_red_muted: "#b81a1e"
 
   black:
     display_name: "Solunized Black"
@@ -66,7 +70,7 @@ themes:
       dim_0:    "#57727a"
       fg_0:     "#9ab6bc"
       fg_1:     "#b8cdd1"
-      red:      "#c51f23"
+      red:      "#f7564f"
       green:    "#73b936"
       yellow:   "#d9b02a"
       blue:     "#4191f4"
@@ -74,7 +78,7 @@ themes:
       cyan:     "#3fc4b6"
       orange:   "#ea8347"
       violet:   "#ac85e8"
-      br_red:      "#b81a1e"
+      br_red:      "#ff6a60"
       br_green:    "#81c745"
       br_yellow:   "#e8be39"
       br_blue:     "#56a0fc"
@@ -82,6 +86,8 @@ themes:
       br_cyan:     "#51d4c4"
       br_orange:   "#fa9253"
       br_violet:   "#ba93f7"
+      red_muted:    "#c51f23"
+      br_red_muted: "#b81a1e"
 
   white:
     display_name: "Solunized White"
@@ -110,3 +116,5 @@ themes:
       br_cyan:     "#007d76"
       br_orange:   "#a44910"
       br_violet:   "#6e52b5"
+      red_muted:    "#c51f23"
+      br_red_muted: "#b81a1e"
