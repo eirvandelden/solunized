@@ -88,7 +88,7 @@ themes:
     interface_style: light
     accent_color: true
     colors:
-      bg_0:     "#ffffff"
+      bg_0:     "#fafcfd"
       bg_1:     "#ebf2f4"
       bg_2:     "#cddce0"
       dim_0:    "#6b8d95"
