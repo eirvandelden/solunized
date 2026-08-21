@@ -1,9 +1,9 @@
 # Solunized
 
 My higher-contrast variation of [Solarized](https://ethanschoonover.com/solarized/),
-inspired by [Selenized](https://github.com/jan-warchol/selenized). Solunized keeps
-Solarized's distinctive blue-teal background tint while increasing the contrast between
-background and foreground text for improved readability.
+inspired by [Selenized](https://github.com/jan-warchol/selenized). Solunized keeps as much
+of Solarized intact as it can — the blue-teal dark background, the warm cream light background —
+and changes only what readability demands: more contrast between background and foreground text.
 
 ## Themes
 
@@ -12,7 +12,7 @@ Four variants are provided, matching the Solarized/Selenized convention:
 | Variant | Description |
 |---------|-------------|
 | **Dark** | Blue-teal dark background (primary theme) |
-| **Light** | Blue-tinted light background |
+| **Light** | Warm cream light background |
 | **Black** | Near-black background with blue accent |
 | **White** | Pure white background with blue accent |
 
