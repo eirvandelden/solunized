@@ -533,6 +533,7 @@ class FullApplicationIntegrationTest < Minitest::Test
     assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "ghostty", "*")).size
     assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "nova", "*.css")).size
     assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "mvpa-css", "*.css")).size
+    assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "herdr", "*.toml")).size
     assert_equal [], Dir.glob(File.join(@tmpdir, "out", "terminal", "*"))
 
     zed_json = File.read(File.join(@tmpdir, "out", "zed", "solunized-theme.json"))
@@ -565,6 +566,8 @@ class FullApplicationIntegrationTest < Minitest::Test
       File.join(@tmpdir, "out", "docs")
     when "ghostty"
       File.join(@tmpdir, "out", "ghostty")
+    when "herdr"
+      File.join(@tmpdir, "out", "herdr")
     when "nova"
       File.join(@tmpdir, "out", "nova")
     when "nvim"
