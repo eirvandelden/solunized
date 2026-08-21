@@ -14,7 +14,7 @@ Four variants are provided, matching the Solarized/Selenized convention:
 | **Dark** | Blue-teal dark background (primary theme) |
 | **Light** | Warm cream light background |
 | **Black** | Near-black background with blue accent |
-| **White** | Pure white background with blue accent |
+| **White** | Cool near-white background with blue accent |
 
 All colour values are defined in [`themes.yml`](themes.yml). See [`docs/colors.md`](docs/colors.md)
 for a full table of colour names and hex values for each variant.
