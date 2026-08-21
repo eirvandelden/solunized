@@ -32,12 +32,12 @@ themes:
     interface_style: light
     accent_color: true
     colors:
-      bg_0:     "#fafcfd"
-      bg_1:     "#e4ecef"
-      bg_2:     "#c5d5da"
-      dim_0:    "#7d9da4"
-      fg_0:     "#314d55"
-      fg_1:     "#1b2e37"
+      bg_0:     "#fffbf1"
+      bg_1:     "#eeeae0"
+      bg_2:     "#d5d2c8"
+      dim_0:    "#6a8990"
+      fg_0:     "#243f47"
+      fg_1:     "#10232c"
       red:      "#c51f23"
       green:    "#3d8700"
       yellow:   "#9e7c00"
