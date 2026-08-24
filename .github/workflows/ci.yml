@@ -1,0 +1,41 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-slim
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6.0.3
+
+      - name: Set up Ruby
+        uses: spinel-coop/setup-rv@main
+        with:
+          ruby-version: current
+
+      - name: Run tests
+        run: ruby test/generate_themes_test.rb
+
+  generated_files_current:
+    name: Generated files match themes.yml
+    runs-on: ubuntu-slim
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6.0.3
+
+      - name: Set up Ruby
+        uses: spinel-coop/setup-rv@main
+        with:
+          ruby-version: current
+
+      - name: Regenerate application themes
+        run: ruby generate_themes.rb
+
+      - name: Fail if regenerating changed a committed file
+        run: git diff --exit-code
