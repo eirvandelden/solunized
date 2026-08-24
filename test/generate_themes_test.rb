@@ -528,10 +528,10 @@ class FullApplicationIntegrationTest < Minitest::Test
 
     assert File.exist?(File.join(@tmpdir, "out", "docs", "colors.md"))
     assert File.exist?(File.join(@tmpdir, "out", "nvim", "colors", "solunized.lua"))
-    assert File.exist?(File.join(@tmpdir, "out", "nvim_lualine", "solunized.lua"))
+    assert File.exist?(File.join(@tmpdir, "out", "nvim", "lua", "lualine", "themes", "solunized.lua"))
     assert File.exist?(File.join(@tmpdir, "out", "zed", "solunized-theme.json"))
     assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "ghostty", "*")).size
-    assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "nova", "*.css")).size
+    assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "nova", "Themes", "*.css")).size
     assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "mvpa-css", "*.css")).size
     assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "herdr", "*.toml")).size
     assert_equal [], Dir.glob(File.join(@tmpdir, "out", "terminal", "*"))
@@ -553,36 +553,15 @@ class FullApplicationIntegrationTest < Minitest::Test
       config = YAML.load_file(theme_file)
       app_name = config.keys.fetch(0)
       app_config = config.fetch(app_name)
-      app_config["output_dir"] = mapped_output_dir(app_name)
+      app_config["output_dir"] = redirected_output_dir(app_config.fetch("output_dir"))
       File.write(theme_file, YAML.dump(config))
     end
 
     dest_apps
   end
 
-  def mapped_output_dir(app_name)
-    case app_name
-    when "docs"
-      File.join(@tmpdir, "out", "docs")
-    when "ghostty"
-      File.join(@tmpdir, "out", "ghostty")
-    when "herdr"
-      File.join(@tmpdir, "out", "herdr")
-    when "nova"
-      File.join(@tmpdir, "out", "nova")
-    when "nvim"
-      File.join(@tmpdir, "out", "nvim", "colors")
-    when "nvim_lualine"
-      File.join(@tmpdir, "out", "nvim_lualine")
-    when "terminal"
-      File.join(@tmpdir, "out", "terminal")
-    when "zed"
-      File.join(@tmpdir, "out", "zed")
-    when "mvpa_css"
-      File.join(@tmpdir, "out", "mvpa-css")
-    else
-      raise "Unhandled app #{app_name}"
-    end
+  def redirected_output_dir(configured_dir)
+    File.join(@tmpdir, "out", configured_dir.delete_prefix("dist/"))
   end
 end
 
