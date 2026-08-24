@@ -4,3 +4,6 @@ dist/
 # Local AI assistant instruction files (user-specific, do not commit)
 AGENTS.md
 CLAUDE.md
+
+# Git worktrees for parallel branches
+.worktrees/
