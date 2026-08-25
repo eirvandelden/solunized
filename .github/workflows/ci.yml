@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
 
+# The runners set no UTF-8 locale, so Ruby would read the theme files as
+# US-ASCII and choke on the non-ASCII characters they contain.
+env:
+  LANG: C.UTF-8
+  LC_ALL: C.UTF-8
+
 jobs:
   test:
     name: Tests
