@@ -121,7 +121,7 @@ class GenerateAppThemesTest < Minitest::Test
     }
     generate_app_themes(THEMES, config)
 
-    dark_css = File.read(File.join(@tmpdir, "Test Dark.css"))
+    dark_css = File.read(File.join(@tmpdir, "Test Dark.css"), encoding: "UTF-8")
     assert_match(/-theme-display-name: "Test Dark";/, dark_css)
   end
 end
@@ -146,7 +146,7 @@ class ApplicationConfigIntegrationTest < Minitest::Test
 
     generate_app_themes(themes, config)
 
-    dark_css = File.read(File.join(@tmpdir, "Solunized Dark.css"))
+    dark_css = File.read(File.join(@tmpdir, "Solunized Dark.css"), encoding: "UTF-8")
     dim_0    = themes["dark"]["colors"]["dim_0"]
     fg_1     = themes["dark"]["colors"]["fg_1"]
 
@@ -179,10 +179,10 @@ class ProcessErbAppTest < Minitest::Test
     }
     process_erb_app(THEMES, config, erb_file)
 
-    dark_out = File.read(File.join(@tmpdir, "out", "theme-dark.txt"))
+    dark_out = File.read(File.join(@tmpdir, "out", "theme-dark.txt"), encoding: "UTF-8")
     assert_equal "dark: #001122\n", dark_out
 
-    light_out = File.read(File.join(@tmpdir, "out", "theme-light.txt"))
+    light_out = File.read(File.join(@tmpdir, "out", "theme-light.txt"), encoding: "UTF-8")
     assert_equal "light: #ffffff\n", light_out
   end
 
@@ -197,7 +197,7 @@ class ProcessErbAppTest < Minitest::Test
     }
     process_erb_app(THEMES, config, erb_file)
 
-    content = File.read(File.join(@tmpdir, "out", "all.txt"))
+    content = File.read(File.join(@tmpdir, "out", "all.txt"), encoding: "UTF-8")
     assert_match(/dark/, content)
     assert_match(/light/, content)
   end
@@ -213,8 +213,8 @@ class ProcessErbAppTest < Minitest::Test
     }
     process_erb_app(THEMES, config, erb_file)
 
-    assert_equal "dark\n",  File.read(File.join(@tmpdir, "out", "dark.txt"))
-    assert_equal "light\n", File.read(File.join(@tmpdir, "out", "light.txt"))
+    assert_equal "dark\n",  File.read(File.join(@tmpdir, "out", "dark.txt"), encoding: "UTF-8")
+    assert_equal "light\n", File.read(File.join(@tmpdir, "out", "light.txt"), encoding: "UTF-8")
   end
 
   def test_raises_for_unknown_colour_key_in_erb_template
@@ -451,7 +451,7 @@ class MvpaCssApplicationTest < Minitest::Test
     process_erb_app(@themes, config, erb_file)
 
     @css_by_variant = @themes.keys.to_h do |variant|
-      [ variant, File.read(File.join(@tmpdir, "solunized-#{variant}.css")) ]
+      [ variant, File.read(File.join(@tmpdir, "solunized-#{variant}.css"), encoding: "UTF-8") ]
     end
   end
 
@@ -536,7 +536,7 @@ class FullApplicationIntegrationTest < Minitest::Test
     assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "herdr", "*.toml")).size
     assert_equal [], Dir.glob(File.join(@tmpdir, "out", "terminal", "*"))
 
-    zed_json = File.read(File.join(@tmpdir, "out", "zed", "solunized-theme.json"))
+    zed_json = File.read(File.join(@tmpdir, "out", "zed", "solunized-theme.json"), encoding: "UTF-8")
     parsed = JSON.parse(zed_json)
     assert_equal "Solunized", parsed.fetch("name")
     assert_equal 4, parsed.fetch("themes").size
