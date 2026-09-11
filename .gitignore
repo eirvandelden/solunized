@@ -3,3 +3,8 @@ dist/
 
 # Git worktrees for parallel branches
 .worktrees/
+
+.claude/settings.local.json
+.claude/.cc-writes
+.claude/worktrees/
+.claude/scheduled_tasks.lock
