@@ -507,6 +507,46 @@ class MvpaCssApplicationTest < Minitest::Test
 end
 
 # ---------------------------------------------------------------------------
+# slack application
+# ---------------------------------------------------------------------------
+
+class SlackApplicationTest < Minitest::Test
+  def setup
+    @tmpdir = Dir.mktmpdir
+    @workspace_root = File.expand_path("..", __dir__)
+    @themes = YAML.load_file(File.join(@workspace_root, "themes.yml"))["themes"]
+
+    config = YAML.load_file(File.join(@workspace_root, "applications/slack/theme.yml"))["slack"]
+    config["output_dir"] = @tmpdir
+    erb_file = File.join(@workspace_root, "applications/slack/theme.erb")
+
+    process_erb_app(@themes, config, erb_file)
+
+    @content = File.read(File.join(@tmpdir, "slack.md"), encoding: "UTF-8")
+  end
+
+  def teardown
+    FileUtils.rm_rf(@tmpdir)
+  end
+
+  def test_includes_a_theme_string_per_variant
+    @themes.each_value do |theme_data|
+      colors   = theme_data["colors"]
+      expected = [
+        colors["bg_0"], colors["bg_1"], colors["blue"], colors["fg_1"],
+        colors["bg_2"], colors["fg_0"], colors["green"], colors["red"]
+      ].join(",")
+
+      assert_includes @content, expected
+    end
+  end
+
+  def test_explains_the_sidebar_only_limitation
+    assert_match(/sidebar/i, @content)
+  end
+end
+
+# ---------------------------------------------------------------------------
 # full application integration
 # ---------------------------------------------------------------------------
 

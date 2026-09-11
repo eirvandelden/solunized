@@ -78,6 +78,7 @@ still generated.
 | [Terminal.app](https://support.apple.com/guide/terminal/welcome/mac) | [`applications/terminal/theme.yml`](applications/terminal/theme.yml) |
 | [Zed](https://zed.dev) | [`applications/zed/theme.yml`](applications/zed/theme.yml) |
 | Herdr | [`applications/herdr/theme.yml`](applications/herdr/theme.yml) |
+| [Slack](https://slack.com) | [`applications/slack/theme.yml`](applications/slack/theme.yml) — generates [`docs/slack.md`](docs/slack.md), a guide to pasting a custom theme in by hand |
 
 ## Licence
 
