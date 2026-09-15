@@ -90,10 +90,15 @@ def validate_erb_config!(app_file, app_name, app_config)
     raise RuntimeError, "Invalid config in #{app_file}: application '#{app_name}' requires filename"
   end
 
-  erb_file = app_file.sub(/\.yml$/, ".erb")
-  return if File.exist?(erb_file)
+  return if erb_template_for(app_file)
 
-  raise RuntimeError, "Invalid config in #{app_file}: missing template #{erb_file}"
+  raise RuntimeError, "Invalid config in #{app_file}: missing template template.erb (or template.<ext>.erb)"
+end
+
+# Templates are named "template.erb" or, when it helps to name the output format,
+# "template.<ext>.erb" (e.g. "template.md.erb"). Either lives next to the app's configuration.yml.
+def erb_template_for(app_file)
+  Dir.glob(File.join(File.dirname(app_file), "template*.erb")).min
 end
 
 # ---------------------------------------------------------------------------
@@ -330,12 +335,12 @@ def process_all_apps(themes_yml:, apps_dir:, plutil_command: "plutil", plutil_en
   end
   validate_themes!(themes_yml, themes)
 
-  Dir.glob(File.join(apps_dir, "**", "theme.yml")).sort.each do |app_file|
+  Dir.glob(File.join(apps_dir, "**", "configuration.yml")).sort.each do |app_file|
     app_name, app_config = validate_app_config!(app_file, load_yaml_hash(app_file))
     puts "Processing application: #{app_name}"
 
     if app_config["format"] == "erb"
-      erb_file = app_file.sub(/\.yml$/, ".erb")
+      erb_file = erb_template_for(app_file)
       begin
         process_erb_app(
           themes,
