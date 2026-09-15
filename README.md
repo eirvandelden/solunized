@@ -59,14 +59,15 @@ still generated.
 
 1. Create `applications/<appname>/configuration.yml` with:
    - `output_dir` — where to write generated files
-   - `file_suffix` — file extension for output files (e.g. `.css`)
-   - `sections` — a map of CSS selectors (or equivalent) to property→colour-name mappings
-2. For ERB-based generators, add `applications/<appname>/template.erb` (or `template.<ext>.erb`,
-   e.g. `template.md.erb`, when naming the output format helps).
-3. Colour name values resolve against `themes.yml`:
-   - A colour key (e.g. `bg_1`) is replaced with its hex value
-   - A metadata key (`display_name`, `interface_style`, `accent_color`) is replaced with that theme attribute
-   - Any other string is used verbatim (e.g. `italic`, `rgba(...)`)
+   - `per_theme` — `true` for one output file per variant, `false` for one combined file
+   - `filename_pattern` (when `per_theme: true`) — e.g. `"solunized-%{variant}.css"`, or
+     `filename` (when `per_theme: false`) — e.g. `"colors.md"`
+2. Add `applications/<appname>/template.erb` (or `template.<ext>.erb`, e.g. `template.md.erb`,
+   when naming the output format helps).
+3. In the template, `c(variant, 'colour_name')` resolves a colour to its hex value. A
+   `per_theme: true` template also gets `theme_data`, the current variant's metadata hash
+   (`display_name`, `interface_style`, `accent_color`); a `per_theme: false` template loops
+   over `themes` itself and reads that same hash per iteration.
 
 ### Supported applications
 

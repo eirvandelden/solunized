@@ -1,5 +1,4 @@
 slack:
-  format: erb
   output_dir: dist/slack
   per_theme: false
   filename: slack.md
