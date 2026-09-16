@@ -80,7 +80,7 @@ still generated.
 | [Terminal.app](https://support.apple.com/guide/terminal/welcome/mac) | [`applications/terminal/configuration.yml`](applications/terminal/configuration.yml) |
 | [Zed](https://zed.dev) | [`applications/zed/configuration.yml`](applications/zed/configuration.yml) |
 | Herdr | [`applications/herdr/configuration.yml`](applications/herdr/configuration.yml) |
-| [Slack](https://slack.com) | [`applications/slack/configuration.yml`](applications/slack/configuration.yml) — generates `dist/slack/slack.md`, a guide to pasting a custom theme in by hand |
+| [Slack](https://slack.com) | [`applications/slack/configuration.yml`](applications/slack/configuration.yml) — generates [`docs/slack.md`](docs/slack.md), a guide to pasting a custom theme in by hand |
 
 ## Licence
 

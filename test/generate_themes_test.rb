@@ -523,7 +523,7 @@ class FullApplicationIntegrationTest < Minitest::Test
     process_all_apps(themes_yml: themes_yml, apps_dir: apps_dir, plutil_command: "missing-plutil-command")
 
     assert File.exist?(File.join(@tmpdir, "out", "docs", "colors.md"))
-    assert File.exist?(File.join(@tmpdir, "out", "slack", "slack.md"))
+    assert File.exist?(File.join(@tmpdir, "out", "docs", "slack.md"))
     assert File.exist?(File.join(@tmpdir, "out", "nvim", "colors", "solunized.lua"))
     assert File.exist?(File.join(@tmpdir, "out", "nvim", "lua", "lualine", "themes", "solunized.lua"))
     assert File.exist?(File.join(@tmpdir, "out", "zed", "solunized-theme.json"))
