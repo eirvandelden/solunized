@@ -461,26 +461,44 @@ class SlackApplicationTest < Minitest::Test
     process_erb_app(@themes, config, erb_file)
 
     @content = File.read(File.join(@tmpdir, "slack.md"), encoding: "UTF-8")
+    @theme_strings = @content.scan(/```\n(#[0-9a-f]{6}(?:,#[0-9a-f]{6}){7})\n```/).flatten
   end
 
   def teardown
     FileUtils.rm_rf(@tmpdir)
   end
 
-  def test_includes_a_theme_string_per_variant
-    @themes.each_value do |theme_data|
-      colors   = theme_data["colors"]
-      expected = [
-        colors["bg_0"], colors["bg_1"], colors["blue"], colors["fg_1"],
-        colors["bg_2"], colors["fg_0"], colors["green"], colors["red"]
-      ].join(",")
+  def test_generates_one_eight_colour_theme_string_per_variant
+    assert_equal @themes.size, @theme_strings.size
+  end
 
-      assert_includes @content, expected
+  def test_active_item_text_is_readable_against_active_item
+    @theme_strings.each do |string|
+      active_item, active_item_text = string.split(",").values_at(2, 3)
+
+      assert_operator contrast_ratio(active_item, active_item_text), :>=, 4.5,
+        "Active Item Text #{active_item_text} on Active Item #{active_item} fails WCAG AA"
     end
   end
 
   def test_explains_the_sidebar_only_limitation
     assert_match(/sidebar/i, @content)
+  end
+
+  private
+
+  def contrast_ratio(hex_a, hex_b)
+    lighter, darker = [ relative_luminance(hex_a), relative_luminance(hex_b) ].sort.reverse
+    (lighter + 0.05) / (darker + 0.05)
+  end
+
+  def relative_luminance(hex)
+    r, g, b = hex.delete_prefix("#").scan(/../).map { |c| linearize(c.to_i(16) / 255.0) }
+    0.2126 * r + 0.7152 * g + 0.0722 * b
+  end
+
+  def linearize(channel)
+    channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055)**2.4
   end
 end
 
