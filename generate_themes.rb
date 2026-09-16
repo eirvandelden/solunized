@@ -5,7 +5,7 @@ require "base64"
 require "tempfile"
 require "open3"
 
-HEX_COLOR_PATTERN = /\A#[0-9A-Fa-f]{6}\z/.freeze
+HEX_COLOR_PATTERN = /\A#[0-9A-Fa-f]{6}\z/
 
 class PlutilUnavailableError < RuntimeError; end
 
@@ -55,12 +55,6 @@ def validate_app_config!(app_file, raw_config)
     raise RuntimeError, "Invalid config in #{app_file}: application '#{app_name}' requires output_dir"
   end
 
-  validate_erb_config!(app_file, app_name, app_config)
-
-  [ app_name, app_config ]
-end
-
-def validate_erb_config!(app_file, app_name, app_config)
   per_theme = app_config["per_theme"]
   unless per_theme == true || per_theme == false
     raise RuntimeError, "Invalid config in #{app_file}: application '#{app_name}' requires per_theme: true|false"
@@ -70,15 +64,22 @@ def validate_erb_config!(app_file, app_name, app_config)
     raise RuntimeError, "Invalid config in #{app_file}: application '#{app_name}' requires filename"
   end
 
-  return if erb_template_for(app_file)
+  erb_file = erb_template_for(app_file)
+  if erb_file.nil?
+    raise RuntimeError, "Invalid config in #{app_file}: missing template template.<ext>.erb"
+  end
 
-  raise RuntimeError, "Invalid config in #{app_file}: missing template template.erb (or template.<ext>.erb)"
+  [ app_name, app_config, erb_file ]
 end
 
-# Templates are named "template.erb" or, when it helps to name the output format,
-# "template.<ext>.erb" (e.g. "template.md.erb"). Either lives next to the app's configuration.yml.
+# Templates are named "template.<ext>.erb", naming the output format (e.g. "template.md.erb").
+# Exactly one must live next to the app's configuration.yml.
 def erb_template_for(app_file)
-  Dir.glob(File.join(File.dirname(app_file), "template*.erb")).min
+  matches = Dir.glob(File.join(File.dirname(app_file), "template.*.erb")).sort
+  return nil if matches.empty?
+  return matches.first if matches.size == 1
+
+  raise RuntimeError, "Invalid config in #{app_file}: multiple templates match (#{matches.join(', ')})"
 end
 
 # ---------------------------------------------------------------------------
@@ -281,10 +282,9 @@ def process_all_apps(themes_yml:, apps_dir:, plutil_command: "plutil", plutil_en
   validate_themes!(themes_yml, themes)
 
   Dir.glob(File.join(apps_dir, "**", "configuration.yml")).sort.each do |app_file|
-    app_name, app_config = validate_app_config!(app_file, load_yaml_hash(app_file))
+    app_name, app_config, erb_file = validate_app_config!(app_file, load_yaml_hash(app_file))
     puts "Processing application: #{app_name}"
 
-    erb_file = erb_template_for(app_file)
     begin
       process_erb_app(
         themes,

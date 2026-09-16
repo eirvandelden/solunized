@@ -62,12 +62,16 @@ still generated.
    - `per_theme` — `true` for one output file per variant, `false` for one combined file
    - `filename_pattern` (when `per_theme: true`) — e.g. `"solunized-%{variant}.css"`, or
      `filename` (when `per_theme: false`) — e.g. `"colors.md"`
-2. Add `applications/<appname>/template.erb` (or `template.<ext>.erb`, e.g. `template.md.erb`,
-   when naming the output format helps).
-3. In the template, `c(variant, 'colour_name')` resolves a colour to its hex value. A
-   `per_theme: true` template also gets `theme_data`, the current variant's metadata hash
-   (`display_name`, `interface_style`, `accent_color`); a `per_theme: false` template loops
-   over `themes` itself and reads that same hash per iteration.
+2. Add `applications/<appname>/template.<ext>.erb`, naming the output format, e.g.
+   `template.md.erb` for Markdown, `template.css.erb` for CSS.
+3. In the template:
+   - `c(variant, 'colour_name')` resolves a colour to its hex value
+   - `appearance(variant)` resolves to `"dark"` or `"light"`
+   - `hex_to_term_color(hex)` converts a hex colour to the binary NSColor plist data
+     Terminal.app profiles need
+   - A `per_theme: true` template also gets `theme_data`, the current variant's metadata hash
+     (`display_name`, `interface_style`, `accent_color`); a `per_theme: false` template loops
+     over `themes` itself and reads that same hash per iteration
 
 ### Supported applications
 

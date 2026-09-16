@@ -308,6 +308,53 @@ class ProcessAllAppsTest < Minitest::Test
     assert_equal "ok\n", File.read(File.join(@tmpdir, "out", "guide", "guide.md"), encoding: "UTF-8")
   end
 
+  def test_rejects_a_template_with_no_extension
+    themes_yml = File.join(@tmpdir, "themes.yml")
+    File.write(themes_yml, YAML.dump({ "themes" => THEMES }))
+
+    apps_dir = File.join(@tmpdir, "apps")
+    guide_dir = File.join(apps_dir, "guide")
+    FileUtils.mkdir_p(guide_dir)
+
+    File.write(File.join(guide_dir, "configuration.yml"), <<~YAML)
+      guide:
+        output_dir: #{@tmpdir}/out/guide
+        per_theme: false
+        filename: guide.md
+    YAML
+    File.write(File.join(guide_dir, "template.erb"), "ok\n")
+
+    error = assert_raises(RuntimeError) do
+      process_all_apps(themes_yml: themes_yml, apps_dir: apps_dir)
+    end
+
+    assert_match(/missing template/, error.message)
+  end
+
+  def test_raises_when_more_than_one_template_matches
+    themes_yml = File.join(@tmpdir, "themes.yml")
+    File.write(themes_yml, YAML.dump({ "themes" => THEMES }))
+
+    apps_dir = File.join(@tmpdir, "apps")
+    guide_dir = File.join(apps_dir, "guide")
+    FileUtils.mkdir_p(guide_dir)
+
+    File.write(File.join(guide_dir, "configuration.yml"), <<~YAML)
+      guide:
+        output_dir: #{@tmpdir}/out/guide
+        per_theme: false
+        filename: guide.md
+    YAML
+    File.write(File.join(guide_dir, "template.md.erb"), "ok\n")
+    File.write(File.join(guide_dir, "template.txt.erb"), "ok\n")
+
+    error = assert_raises(RuntimeError) do
+      process_all_apps(themes_yml: themes_yml, apps_dir: apps_dir)
+    end
+
+    assert_match(/multiple templates/, error.message)
+  end
+
   def test_rejects_invalid_app_config
     themes_yml = File.join(@tmpdir, "themes.yml")
     File.write(themes_yml, YAML.dump({ "themes" => THEMES }))
