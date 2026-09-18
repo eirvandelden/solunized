@@ -1,0 +1,4 @@
+nova:
+  output_dir: "dist/nova/Themes"
+  per_theme: true
+  filename_pattern: "%{display_name}.css"

@@ -57,27 +57,34 @@ still generated.
 
 ### Adding a new application
 
-1. Create `applications/<appname>/theme.yml` with:
+1. Create `applications/<appname>/configuration.yml` with:
    - `output_dir` — where to write generated files
-   - `file_suffix` — file extension for output files (e.g. `.css`)
-   - `sections` — a map of CSS selectors (or equivalent) to property→colour-name mappings
-2. For ERB-based generators, add `applications/<appname>/theme.erb`.
-3. Colour name values resolve against `themes.yml`:
-   - A colour key (e.g. `bg_1`) is replaced with its hex value
-   - A metadata key (`display_name`, `interface_style`, `accent_color`) is replaced with that theme attribute
-   - Any other string is used verbatim (e.g. `italic`, `rgba(...)`)
+   - `per_theme` — `true` for one output file per variant, `false` for one combined file
+   - `filename_pattern` (when `per_theme: true`) — e.g. `"solunized-%{variant}.css"`, or
+     `filename` (when `per_theme: false`) — e.g. `"colors.md"`
+2. Add `applications/<appname>/template.<ext>.erb`, naming the output format, e.g.
+   `template.md.erb` for Markdown, `template.css.erb` for CSS.
+3. In the template:
+   - `c(variant, 'colour_name')` resolves a colour to its hex value
+   - `appearance(variant)` resolves to `"dark"` or `"light"`
+   - `hex_to_term_color(hex)` converts a hex colour to the binary NSColor plist data
+     Terminal.app profiles need
+   - A `per_theme: true` template also gets `theme_data`, the current variant's metadata hash
+     (`display_name`, `interface_style`, `accent_color`); a `per_theme: false` template loops
+     over `themes` itself and reads that same hash per iteration
 
 ### Supported applications
 
 | Application | Config file |
 |-------------|-------------|
-| [Nova](https://nova.app) | [`applications/nova/theme.yml`](applications/nova/theme.yml) |
-| [Ghostty](https://ghostty.org) | [`applications/ghostty/theme.yml`](applications/ghostty/theme.yml) |
-| [Neovim](https://neovim.io) | [`applications/nvim/theme.yml`](applications/nvim/theme.yml) |
-| [Neovim Lualine](https://github.com/nvim-lualine/lualine.nvim) | [`applications/nvim_lualine/theme.yml`](applications/nvim_lualine/theme.yml) |
-| [Terminal.app](https://support.apple.com/guide/terminal/welcome/mac) | [`applications/terminal/theme.yml`](applications/terminal/theme.yml) |
-| [Zed](https://zed.dev) | [`applications/zed/theme.yml`](applications/zed/theme.yml) |
-| Herdr | [`applications/herdr/theme.yml`](applications/herdr/theme.yml) |
+| [Nova](https://nova.app) | [`applications/nova/configuration.yml`](applications/nova/configuration.yml) |
+| [Ghostty](https://ghostty.org) | [`applications/ghostty/configuration.yml`](applications/ghostty/configuration.yml) |
+| [Neovim](https://neovim.io) | [`applications/nvim/configuration.yml`](applications/nvim/configuration.yml) |
+| [Neovim Lualine](https://github.com/nvim-lualine/lualine.nvim) | [`applications/nvim_lualine/configuration.yml`](applications/nvim_lualine/configuration.yml) |
+| [Terminal.app](https://support.apple.com/guide/terminal/welcome/mac) | [`applications/terminal/configuration.yml`](applications/terminal/configuration.yml) |
+| [Zed](https://zed.dev) | [`applications/zed/configuration.yml`](applications/zed/configuration.yml) |
+| Herdr | [`applications/herdr/configuration.yml`](applications/herdr/configuration.yml) |
+| [Slack](https://slack.com) | [`applications/slack/configuration.yml`](applications/slack/configuration.yml) — generates [`docs/slack.md`](docs/slack.md), a guide to pasting a custom theme in by hand |
 
 ## Licence
 

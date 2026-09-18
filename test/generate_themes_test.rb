@@ -36,122 +36,42 @@ LIGHT_THEME = {
 THEMES = { "dark" => DARK_THEME, "light" => LIGHT_THEME }.freeze
 
 # ---------------------------------------------------------------------------
-# resolve_value
+# Nova application
 # ---------------------------------------------------------------------------
 
-class ResolveValueTest < Minitest::Test
-  def test_resolves_colour_key
-    assert_equal "#001122", resolve_value("bg_0", DARK_THEME)
-  end
-
-  def test_resolves_metadata_key
-    assert_equal "Test Dark", resolve_value("display_name", DARK_THEME)
-    assert_equal "dark",      resolve_value("interface_style", DARK_THEME)
-  end
-
-  def test_passthrough_for_unknown_key
-    assert_equal "rgba(0,0,0,0.5)", resolve_value("rgba(0,0,0,0.5)", DARK_THEME)
-  end
-
-  def test_passthrough_for_verbatim_string
-    assert_equal "bold",  resolve_value("bold", DARK_THEME)
-    assert_equal "italic", resolve_value("italic", DARK_THEME)
-  end
-end
-
-# ---------------------------------------------------------------------------
-# generate_css
-# ---------------------------------------------------------------------------
-
-class GenerateCssTest < Minitest::Test
-  def test_basic_property_output
-    sections = { "body" => { "background" => "bg_0" } }
-    css      = generate_css(DARK_THEME, sections)
-    assert_match(/body \{/, css)
-    assert_match(/background: #001122;/, css)
-  end
-
-  def test_quoted_property
-    sections          = { "meta" => { "-theme-display-name" => "display_name" } }
-    quoted_properties = [ "-theme-display-name" ]
-    css               = generate_css(DARK_THEME, sections, quoted_properties)
-    assert_match(/-theme-display-name: "Test Dark";/, css)
-  end
-
-  def test_unquoted_property_by_default
-    sections = { "meta" => { "-theme-display-name" => "display_name" } }
-    css      = generate_css(DARK_THEME, sections)
-    assert_match(/-theme-display-name: Test Dark;/, css)
-  end
-end
-
-# ---------------------------------------------------------------------------
-# generate_app_themes (Nova CSS path)
-# ---------------------------------------------------------------------------
-
-class GenerateAppThemesTest < Minitest::Test
+class NovaApplicationTest < Minitest::Test
   def setup
     @tmpdir = Dir.mktmpdir
-  end
+    @workspace_root = File.expand_path("..", __dir__)
+    @themes = YAML.load_file(File.join(@workspace_root, "themes.yml"))["themes"]
 
-  def teardown
-    FileUtils.rm_rf(@tmpdir)
-  end
-
-  def test_generates_one_css_file_per_theme
-    config = {
-      "output_dir"  => @tmpdir,
-      "file_suffix" => ".css",
-      "sections"    => { "root" => { "background" => "bg_0" } }
-    }
-    generate_app_themes(THEMES, config)
-
-    assert File.exist?(File.join(@tmpdir, "Test Dark.css"))
-    assert File.exist?(File.join(@tmpdir, "Test Light.css"))
-  end
-
-  def test_nova_quoted_display_name
-    config = {
-      "output_dir"             => @tmpdir,
-      "file_suffix"            => ".css",
-      "quoted_css_properties"  => [ "-theme-display-name" ],
-      "sections"               => {
-        "meta" => { "-theme-display-name" => "display_name" }
-      }
-    }
-    generate_app_themes(THEMES, config)
-
-    dark_css = File.read(File.join(@tmpdir, "Test Dark.css"), encoding: "UTF-8")
-    assert_match(/-theme-display-name: "Test Dark";/, dark_css)
-  end
-end
-
-# ---------------------------------------------------------------------------
-# application config integration
-# ---------------------------------------------------------------------------
-
-class ApplicationConfigIntegrationTest < Minitest::Test
-  def setup
-    @tmpdir = Dir.mktmpdir
-  end
-
-  def teardown
-    FileUtils.rm_rf(@tmpdir)
-  end
-
-  def test_nova_terminal_palette_matches_terminal_semantics
-    themes = YAML.load_file(File.expand_path("../themes.yml", __dir__))["themes"]
-    config = YAML.load_file(File.expand_path("../applications/nova/theme.yml", __dir__))["nova"]
+    config = YAML.load_file(File.join(@workspace_root, "applications/nova/configuration.yml"))["nova"]
     config["output_dir"] = @tmpdir
+    erb_file = File.join(@workspace_root, "applications/nova/template.css.erb")
 
-    generate_app_themes(themes, config)
+    process_erb_app(@themes, config, erb_file)
 
-    dark_css = File.read(File.join(@tmpdir, "Solunized Dark.css"), encoding: "UTF-8")
-    dim_0    = themes["dark"]["colors"]["dim_0"]
-    fg_1     = themes["dark"]["colors"]["fg_1"]
+    @dark_css = File.read(File.join(@tmpdir, "Solunized Dark.css"), encoding: "UTF-8")
+  end
 
-    assert_includes dark_css, "terminal.white {\n  color: #{dim_0};\n}"
-    assert_includes dark_css, "terminal.bright-white {\n  color: #{fg_1};\n}"
+  def teardown
+    FileUtils.rm_rf(@tmpdir)
+  end
+
+  def test_generates_one_css_file_per_variant
+    assert_equal @themes.size, Dir.glob(File.join(@tmpdir, "*.css")).size
+  end
+
+  def test_terminal_palette_matches_terminal_semantics
+    dim_0 = @themes["dark"]["colors"]["dim_0"]
+    fg_1  = @themes["dark"]["colors"]["fg_1"]
+
+    assert_includes @dark_css, "terminal.white {\n  color: #{dim_0};\n}"
+    assert_includes @dark_css, "terminal.bright-white {\n  color: #{fg_1};\n}"
+  end
+
+  def test_quotes_the_display_name
+    assert_includes @dark_css, %(-theme-display-name: "Solunized Dark";)
   end
 end
 
@@ -263,23 +183,21 @@ class ProcessAllAppsTest < Minitest::Test
     FileUtils.mkdir_p(docs_dir)
     FileUtils.mkdir_p(terminal_dir)
 
-    File.write(File.join(docs_dir, "theme.yml"), <<~YAML)
+    File.write(File.join(docs_dir, "configuration.yml"), <<~YAML)
       docs:
-        format: erb
         output_dir: #{docs_output_dir}
         per_theme: false
         filename: colors.md
     YAML
-    File.write(File.join(docs_dir, "theme.erb"), "<%= themes.keys.join(',') %>\n")
+    File.write(File.join(docs_dir, "template.md.erb"), "<%= themes.keys.join(',') %>\n")
 
-    File.write(File.join(terminal_dir, "theme.yml"), <<~YAML)
+    File.write(File.join(terminal_dir, "configuration.yml"), <<~YAML)
       terminal:
-        format: erb
         output_dir: #{terminal_output_dir}
         per_theme: true
         filename_pattern: "%{variant}.terminal"
     YAML
-    File.write(File.join(terminal_dir, "theme.erb"), "<%= hex_to_term_color(c(variant, 'bg_0')) %>\n")
+    File.write(File.join(terminal_dir, "template.terminal.erb"), "<%= hex_to_term_color(c(variant, 'bg_0')) %>\n")
 
     process_all_apps(themes_yml: themes_yml, apps_dir: apps_dir, plutil_command: "missing-plutil-command")
 
@@ -347,7 +265,7 @@ class ProcessAllAppsTest < Minitest::Test
     assert_match(/Invalid YAML/, error.message)
   end
 
-  def test_ignores_non_theme_yaml_files
+  def test_ignores_non_configuration_yaml_files
     themes_yml = File.join(@tmpdir, "themes.yml")
     File.write(themes_yml, YAML.dump({ "themes" => THEMES }))
 
@@ -355,19 +273,86 @@ class ProcessAllAppsTest < Minitest::Test
     docs_dir = File.join(apps_dir, "docs")
     FileUtils.mkdir_p(docs_dir)
 
-    File.write(File.join(docs_dir, "theme.yml"), <<~YAML)
+    File.write(File.join(docs_dir, "configuration.yml"), <<~YAML)
       docs:
-        format: erb
         output_dir: #{@tmpdir}/out/docs
         per_theme: false
         filename: colors.md
     YAML
-    File.write(File.join(docs_dir, "theme.erb"), "ok\n")
+    File.write(File.join(docs_dir, "template.md.erb"), "ok\n")
     File.write(File.join(docs_dir, "notes.yml"), "foo: bar\n")
 
     process_all_apps(themes_yml: themes_yml, apps_dir: apps_dir)
 
     assert File.exist?(File.join(@tmpdir, "out", "docs", "colors.md"))
+  end
+
+  def test_finds_a_template_named_after_the_output_extension
+    themes_yml = File.join(@tmpdir, "themes.yml")
+    File.write(themes_yml, YAML.dump({ "themes" => THEMES }))
+
+    apps_dir = File.join(@tmpdir, "apps")
+    guide_dir = File.join(apps_dir, "guide")
+    FileUtils.mkdir_p(guide_dir)
+
+    File.write(File.join(guide_dir, "configuration.yml"), <<~YAML)
+      guide:
+        output_dir: #{@tmpdir}/out/guide
+        per_theme: false
+        filename: guide.md
+    YAML
+    File.write(File.join(guide_dir, "template.md.erb"), "ok\n")
+
+    process_all_apps(themes_yml: themes_yml, apps_dir: apps_dir)
+
+    assert_equal "ok\n", File.read(File.join(@tmpdir, "out", "guide", "guide.md"), encoding: "UTF-8")
+  end
+
+  def test_rejects_a_template_with_no_extension
+    themes_yml = File.join(@tmpdir, "themes.yml")
+    File.write(themes_yml, YAML.dump({ "themes" => THEMES }))
+
+    apps_dir = File.join(@tmpdir, "apps")
+    guide_dir = File.join(apps_dir, "guide")
+    FileUtils.mkdir_p(guide_dir)
+
+    File.write(File.join(guide_dir, "configuration.yml"), <<~YAML)
+      guide:
+        output_dir: #{@tmpdir}/out/guide
+        per_theme: false
+        filename: guide.md
+    YAML
+    File.write(File.join(guide_dir, "template.erb"), "ok\n")
+
+    error = assert_raises(RuntimeError) do
+      process_all_apps(themes_yml: themes_yml, apps_dir: apps_dir)
+    end
+
+    assert_match(/missing template/, error.message)
+  end
+
+  def test_raises_when_more_than_one_template_matches
+    themes_yml = File.join(@tmpdir, "themes.yml")
+    File.write(themes_yml, YAML.dump({ "themes" => THEMES }))
+
+    apps_dir = File.join(@tmpdir, "apps")
+    guide_dir = File.join(apps_dir, "guide")
+    FileUtils.mkdir_p(guide_dir)
+
+    File.write(File.join(guide_dir, "configuration.yml"), <<~YAML)
+      guide:
+        output_dir: #{@tmpdir}/out/guide
+        per_theme: false
+        filename: guide.md
+    YAML
+    File.write(File.join(guide_dir, "template.md.erb"), "ok\n")
+    File.write(File.join(guide_dir, "template.txt.erb"), "ok\n")
+
+    error = assert_raises(RuntimeError) do
+      process_all_apps(themes_yml: themes_yml, apps_dir: apps_dir)
+    end
+
+    assert_match(/multiple templates/, error.message)
   end
 
   def test_rejects_invalid_app_config
@@ -378,7 +363,7 @@ class ProcessAllAppsTest < Minitest::Test
     invalid_dir = File.join(apps_dir, "invalid")
     FileUtils.mkdir_p(invalid_dir)
 
-    File.write(File.join(invalid_dir, "theme.yml"), <<~YAML)
+    File.write(File.join(invalid_dir, "configuration.yml"), <<~YAML)
       invalid:
         output_dir: #{@tmpdir}/out/invalid
     YAML
@@ -444,9 +429,9 @@ class MvpaCssApplicationTest < Minitest::Test
     @workspace_root = File.expand_path("..", __dir__)
     @themes = YAML.load_file(File.join(@workspace_root, "themes.yml"))["themes"]
 
-    config = YAML.load_file(File.join(@workspace_root, "applications/mvpa-css/theme.yml"))["mvpa_css"]
+    config = YAML.load_file(File.join(@workspace_root, "applications/mvpa-css/configuration.yml"))["mvpa_css"]
     config["output_dir"] = @tmpdir
-    erb_file = File.join(@workspace_root, "applications/mvpa-css/theme.erb")
+    erb_file = File.join(@workspace_root, "applications/mvpa-css/template.css.erb")
 
     process_erb_app(@themes, config, erb_file)
 
@@ -507,6 +492,64 @@ class MvpaCssApplicationTest < Minitest::Test
 end
 
 # ---------------------------------------------------------------------------
+# slack application
+# ---------------------------------------------------------------------------
+
+class SlackApplicationTest < Minitest::Test
+  def setup
+    @tmpdir = Dir.mktmpdir
+    @workspace_root = File.expand_path("..", __dir__)
+    @themes = YAML.load_file(File.join(@workspace_root, "themes.yml"))["themes"]
+
+    config = YAML.load_file(File.join(@workspace_root, "applications/slack/configuration.yml"))["slack"]
+    config["output_dir"] = @tmpdir
+    erb_file = File.join(@workspace_root, "applications/slack/template.md.erb")
+
+    process_erb_app(@themes, config, erb_file)
+
+    @content = File.read(File.join(@tmpdir, "slack.md"), encoding: "UTF-8")
+    @theme_strings = @content.scan(/```\n(#[0-9a-f]{6}(?:,#[0-9a-f]{6}){7})\n```/).flatten
+  end
+
+  def teardown
+    FileUtils.rm_rf(@tmpdir)
+  end
+
+  def test_generates_one_eight_colour_theme_string_per_variant
+    assert_equal @themes.size, @theme_strings.size
+  end
+
+  def test_active_item_text_is_readable_against_active_item
+    @theme_strings.each do |string|
+      active_item, active_item_text = string.split(",").values_at(2, 3)
+
+      assert_operator contrast_ratio(active_item, active_item_text), :>=, 4.5,
+        "Active Item Text #{active_item_text} on Active Item #{active_item} fails WCAG AA"
+    end
+  end
+
+  def test_explains_the_sidebar_only_limitation
+    assert_match(/sidebar/i, @content)
+  end
+
+  private
+
+  def contrast_ratio(hex_a, hex_b)
+    lighter, darker = [ relative_luminance(hex_a), relative_luminance(hex_b) ].sort.reverse
+    (lighter + 0.05) / (darker + 0.05)
+  end
+
+  def relative_luminance(hex)
+    r, g, b = hex.delete_prefix("#").scan(/../).map { |c| linearize(c.to_i(16) / 255.0) }
+    0.2126 * r + 0.7152 * g + 0.0722 * b
+  end
+
+  def linearize(channel)
+    channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055)**2.4
+  end
+end
+
+# ---------------------------------------------------------------------------
 # full application integration
 # ---------------------------------------------------------------------------
 
@@ -527,6 +570,7 @@ class FullApplicationIntegrationTest < Minitest::Test
     process_all_apps(themes_yml: themes_yml, apps_dir: apps_dir, plutil_command: "missing-plutil-command")
 
     assert File.exist?(File.join(@tmpdir, "out", "docs", "colors.md"))
+    assert File.exist?(File.join(@tmpdir, "out", "docs", "slack.md"))
     assert File.exist?(File.join(@tmpdir, "out", "nvim", "colors", "solunized.lua"))
     assert File.exist?(File.join(@tmpdir, "out", "nvim", "lua", "lualine", "themes", "solunized.lua"))
     assert File.exist?(File.join(@tmpdir, "out", "zed", "solunized-theme.json"))
@@ -549,12 +593,12 @@ class FullApplicationIntegrationTest < Minitest::Test
     dest_apps = File.join(@tmpdir, "apps")
     FileUtils.cp_r(src_apps, dest_apps)
 
-    Dir.glob(File.join(dest_apps, "**", "theme.yml")).each do |theme_file|
-      config = YAML.load_file(theme_file)
+    Dir.glob(File.join(dest_apps, "**", "configuration.yml")).each do |config_file|
+      config = YAML.load_file(config_file)
       app_name = config.keys.fetch(0)
       app_config = config.fetch(app_name)
       app_config["output_dir"] = redirected_output_dir(app_config.fetch("output_dir"))
-      File.write(theme_file, YAML.dump(config))
+      File.write(config_file, YAML.dump(config))
     end
 
     dest_apps

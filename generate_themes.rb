@@ -5,22 +5,13 @@ require "base64"
 require "tempfile"
 require "open3"
 
-METADATA_KEYS = %w[display_name interface_style accent_color].freeze
-HEX_COLOR_PATTERN = /\A#[0-9A-Fa-f]{6}\z/.freeze
+HEX_COLOR_PATTERN = /\A#[0-9A-Fa-f]{6}\z/
 
 class PlutilUnavailableError < RuntimeError; end
 
 # ---------------------------------------------------------------------------
 # Core helpers
 # ---------------------------------------------------------------------------
-
-def resolve_value(value, theme_data)
-  colors = theme_data["colors"]
-  return colors[value] if colors.key?(value)
-  return theme_data[value] if METADATA_KEYS.include?(value)
-
-  value
-end
 
 def load_yaml_hash(path)
   data = YAML.safe_load(File.read(path), permitted_classes: [], aliases: false)
@@ -64,23 +55,6 @@ def validate_app_config!(app_file, raw_config)
     raise RuntimeError, "Invalid config in #{app_file}: application '#{app_name}' requires output_dir"
   end
 
-  if app_config["format"] == "erb"
-    validate_erb_config!(app_file, app_name, app_config)
-  else
-    validate_css_config!(app_file, app_name, app_config)
-  end
-
-  [ app_name, app_config ]
-end
-
-def validate_css_config!(app_file, app_name, app_config)
-  sections = app_config["sections"]
-  return if sections.is_a?(Hash)
-
-  raise RuntimeError, "Invalid config in #{app_file}: application '#{app_name}' requires a sections hash"
-end
-
-def validate_erb_config!(app_file, app_name, app_config)
   per_theme = app_config["per_theme"]
   unless per_theme == true || per_theme == false
     raise RuntimeError, "Invalid config in #{app_file}: application '#{app_name}' requires per_theme: true|false"
@@ -90,45 +64,22 @@ def validate_erb_config!(app_file, app_name, app_config)
     raise RuntimeError, "Invalid config in #{app_file}: application '#{app_name}' requires filename"
   end
 
-  erb_file = app_file.sub(/\.yml$/, ".erb")
-  return if File.exist?(erb_file)
+  erb_file = erb_template_for(app_file)
+  if erb_file.nil?
+    raise RuntimeError, "Invalid config in #{app_file}: missing template template.<ext>.erb"
+  end
 
-  raise RuntimeError, "Invalid config in #{app_file}: missing template #{erb_file}"
+  [ app_name, app_config, erb_file ]
 end
 
-# ---------------------------------------------------------------------------
-# CSS path (Nova)
-# ---------------------------------------------------------------------------
+# Templates are named "template.<ext>.erb", naming the output format (e.g. "template.md.erb").
+# Exactly one must live next to the app's configuration.yml.
+def erb_template_for(app_file)
+  matches = Dir.glob(File.join(File.dirname(app_file), "template.*.erb")).sort
+  return nil if matches.empty?
+  return matches.first if matches.size == 1
 
-def generate_css(theme_data, sections, quoted_properties = [])
-  css = ""
-  sections.each do |selector, properties|
-    css += "#{selector} {\n"
-    properties.each do |property, color_ref|
-      resolved = resolve_value(color_ref.to_s, theme_data)
-      value    = quoted_properties.include?(property) ? "\"#{resolved}\"" : resolved.to_s
-      css += "  #{property}: #{value};\n"
-    end
-    css += "}\n\n"
-  end
-  css
-end
-
-def generate_app_themes(themes, app_config)
-  output_dir        = app_config["output_dir"]
-  file_suffix       = app_config["file_suffix"] || ".css"
-  sections          = app_config["sections"]
-  quoted_properties = app_config["quoted_css_properties"] || []
-
-  FileUtils.mkdir_p(output_dir)
-
-  themes.each do |_variant, theme_data|
-    display_name = theme_data["display_name"]
-    css          = generate_css(theme_data, sections, quoted_properties)
-    filename     = File.join(output_dir, "#{display_name}#{file_suffix}")
-    File.write(filename, css)
-    puts "Generated #{filename}"
-  end
+  raise RuntimeError, "Invalid config in #{app_file}: multiple templates match (#{matches.join(', ')})"
 end
 
 # ---------------------------------------------------------------------------
@@ -330,25 +281,20 @@ def process_all_apps(themes_yml:, apps_dir:, plutil_command: "plutil", plutil_en
   end
   validate_themes!(themes_yml, themes)
 
-  Dir.glob(File.join(apps_dir, "**", "theme.yml")).sort.each do |app_file|
-    app_name, app_config = validate_app_config!(app_file, load_yaml_hash(app_file))
+  Dir.glob(File.join(apps_dir, "**", "configuration.yml")).sort.each do |app_file|
+    app_name, app_config, erb_file = validate_app_config!(app_file, load_yaml_hash(app_file))
     puts "Processing application: #{app_name}"
 
-    if app_config["format"] == "erb"
-      erb_file = app_file.sub(/\.yml$/, ".erb")
-      begin
-        process_erb_app(
-          themes,
-          app_config,
-          erb_file,
-          plutil_command: plutil_command,
-          plutil_env: plutil_env
-        )
-      rescue PlutilUnavailableError => e
-        warn "Skipping #{app_name}: #{e.message}"
-      end
-    else
-      generate_app_themes(themes, app_config)
+    begin
+      process_erb_app(
+        themes,
+        app_config,
+        erb_file,
+        plutil_command: plutil_command,
+        plutil_env: plutil_env
+      )
+    rescue PlutilUnavailableError => e
+      warn "Skipping #{app_name}: #{e.message}"
     end
   end
 end

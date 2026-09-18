@@ -24,8 +24,11 @@ jobs:
         with:
           ruby-version: current
 
-      - name: Run tests
+      - name: Run generate_themes tests
         run: ruby test/generate_themes_test.rb
+
+      - name: Run preview_palette tests
+        run: ruby test/preview_palette_test.rb
 
   generated_files_current:
     name: Generated files match themes.yml

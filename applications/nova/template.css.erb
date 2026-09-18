@@ -1,0 +1,293 @@
+meta {
+  -theme-display-name: "<%= theme_data["display_name"] %>";
+  -theme-interface-style: <%= theme_data["interface_style"] %>;
+  -theme-accent-color: <%= theme_data["accent_color"] %>;
+}
+
+terminal.black {
+  color: <%= c(variant, "fg_0") %>;
+}
+
+terminal.red {
+  color: <%= c(variant, "red") %>;
+}
+
+terminal.green {
+  color: <%= c(variant, "green") %>;
+}
+
+terminal.yellow {
+  color: <%= c(variant, "yellow") %>;
+}
+
+terminal.blue {
+  color: <%= c(variant, "blue") %>;
+}
+
+terminal.magenta {
+  color: <%= c(variant, "magenta") %>;
+}
+
+terminal.cyan {
+  color: <%= c(variant, "cyan") %>;
+}
+
+terminal.white {
+  color: <%= c(variant, "dim_0") %>;
+}
+
+terminal.bright-black {
+  color: <%= c(variant, "fg_1") %>;
+}
+
+terminal.bright-red {
+  color: <%= c(variant, "br_red") %>;
+}
+
+terminal.bright-green {
+  color: <%= c(variant, "br_green") %>;
+}
+
+terminal.bright-yellow {
+  color: <%= c(variant, "br_yellow") %>;
+}
+
+terminal.bright-blue {
+  color: <%= c(variant, "br_blue") %>;
+}
+
+terminal.bright-magenta {
+  color: <%= c(variant, "br_magenta") %>;
+}
+
+terminal.bright-cyan {
+  color: <%= c(variant, "br_cyan") %>;
+}
+
+terminal.bright-white {
+  color: <%= c(variant, "fg_1") %>;
+}
+
+meta.window {
+  background-color: <%= c(variant, "bg_1") %>;
+  border-color: <%= c(variant, "bg_2") %>;
+}
+
+meta.titlebar {
+  border-color: <%= c(variant, "bg_1") %>;
+}
+
+meta.document {
+  background-color: <%= c(variant, "bg_0") %>;
+  border-color: <%= c(variant, "bg_1") %>;
+}
+
+meta.text {
+  color: <%= c(variant, "fg_0") %>;
+}
+
+meta.text.invisible {
+  color: rgba(147, 161, 161, 0.1);
+}
+
+meta.text.selected {
+  background-color: <%= c(variant, "bg_1") %>;
+}
+
+meta.cursor {
+  border-color: <%= c(variant, "dim_0") %>;
+  background-color: <%= c(variant, "bg_1") %>;
+}
+
+meta.indentguide {
+  border-color: <%= c(variant, "bg_1") %>;
+}
+
+meta.gutter {
+  background-color: <%= c(variant, "bg_0") %>;
+  border-color: <%= c(variant, "bg_0") %>;
+  color: <%= c(variant, "dim_0") %>;
+}
+
+meta.gutter.selected {
+  background-color: <%= c(variant, "bg_1") %>;
+  color: <%= c(variant, "dim_0") %>;
+}
+
+comment {
+  color: <%= c(variant, "dim_0") %>;
+  font-style: italic;
+}
+
+processing {
+  color: <%= c(variant, "red") %>;
+  font-style: italic;
+}
+
+declaration {
+  color: <%= c(variant, "yellow") %>;
+  font-style: italic;
+}
+
+bracket {
+  color: <%= c(variant, "dim_0") %>;
+}
+
+operator {
+  color: <%= c(variant, "dim_0") %>;
+}
+
+link {
+  color: <%= c(variant, "red") %>;
+}
+
+keyword {
+  color: <%= c(variant, "dim_0") %>;
+  font-style: italic;
+}
+
+invalid {
+  background-color: <%= c(variant, "red") %>;
+}
+
+identifier.global {
+  color: <%= c(variant, "orange") %>;
+}
+
+identifier.constant {
+  color: <%= c(variant, "orange") %>;
+}
+
+identifier.variable {
+  color: <%= c(variant, "magenta") %>;
+}
+
+identifier.type {
+  color: <%= c(variant, "orange") %>;
+}
+
+identifier.function {
+  color: <%= c(variant, "blue") %>;
+}
+
+identifier.property {
+  color: <%= c(variant, "blue") %>;
+}
+
+identifier.method {
+  color: <%= c(variant, "blue") %>;
+}
+
+identifier.core.method {
+  color: <%= c(variant, "orange") %>;
+}
+
+identifier.argument {
+  color: <%= c(variant, "green") %>;
+}
+
+identifier.key {
+  color: <%= c(variant, "br_blue") %>;
+  font-style: italic;
+}
+
+identifier.name {
+  color: <%= c(variant, "blue") %>;
+}
+
+identifier.type.superclass {
+  color: <%= c(variant, "yellow") %>;
+}
+
+identifier.class.type.name {
+  color: <%= c(variant, "blue") %>;
+}
+
+identifier.class.type.module.name {
+  color: <%= c(variant, "yellow") %>;
+}
+
+identifier.type.superclass.module {
+  color: <%= c(variant, "orange") %>;
+}
+
+string {
+  color: <%= c(variant, "green") %>;
+}
+
+string.key {
+  color: <%= c(variant, "red") %>;
+}
+
+regex {
+  color: <%= c(variant, "red") %>;
+}
+
+cdata {
+  color: <%= c(variant, "fg_0") %>;
+}
+
+markup.heading {
+  color: <%= c(variant, "blue") %>;
+  font-weight: bold;
+}
+
+markup.line {
+  color: <%= c(variant, "dim_0") %>;
+}
+
+markup.bold {
+  color: <%= c(variant, "magenta") %>;
+  font-weight: bold;
+}
+
+markup.italic {
+  color: <%= c(variant, "red") %>;
+  font-style: italic;
+}
+
+markup.strikethrough {
+  color: <%= c(variant, "dim_0") %>;
+}
+
+markup.list.item {
+  color: <%= c(variant, "red") %>;
+}
+
+markup.code {
+  color: <%= c(variant, "cyan") %>;
+  background-color: <%= c(variant, "bg_0") %>;
+}
+
+markup.link {
+  color: <%= c(variant, "red") %>;
+}
+
+tag {
+  color: <%= c(variant, "dim_0") %>;
+}
+
+tag.attribute.name {
+  color: <%= c(variant, "fg_0") %>;
+  font-style: italic;
+}
+
+tag.attribute.value {
+  color: <%= c(variant, "green") %>;
+}
+
+tag.framework {
+  color: <%= c(variant, "dim_0") %>;
+}
+
+style.at {
+  color: <%= c(variant, "red") %>;
+}
+
+style.value.number {
+  color: <%= c(variant, "orange") %>;
+}
+
+style.string {
+  color: <%= c(variant, "fg_0") %>;
+}
