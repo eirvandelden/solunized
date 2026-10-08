@@ -15,3 +15,19 @@ Compliance, from `intent.md` acceptance criteria. The plan deliberately proves t
 - Every action that the workflow pins to a release is at its latest stable release → `gh api repos/actions/checkout/releases/latest` returns `v7.0.1`, the tag in `.github/workflows/ci.yml`. `spinel-coop/setup-rv` has 0 releases and only the tag `v1`; the intent puts it out of scope.
 
 Plan `## Proof` tests: `test/generate_themes_test.rb` and `test/preview_palette_test.rb` both exist. The diff adds, weakens, skips or deletes no test. Scope: the commit touches only `.ruby-version`. `.github/` is unchanged, as the intent requires. Ruby 4.0.7 is the newest upstream release (`ruby/ruby` releases list `v4.0.7` first).
+
+## Round 2 — 2026-10-08T11:52:05Z — cfa85de
+
+No new findings. Round 1's open Nit (`README.md:41` floor `Ruby (≥ 3.0)` versus the planning claim at `docs/changes/update-dependencies/plan.md:11`) still stands, and its `→` slot is still empty. It is not repeated here. Between `b4e2cab` and `cfa85de`, only `review.md` changed. The repository has no `REVIEW.md` or `REVIEW.local.md`, so the default Bugs, Security and Compliance passes apply.
+
+Passes: Bugs: nothing found. The code diff against `origin/main` is still one line, `.ruby-version` `4.0.6` → `4.0.7`. Security: nothing found. No code, workflow, dependency source or credential changed.
+
+Compliance, from `intent.md` acceptance criteria. The plan proves them with commands, not new Minitest tests.
+
+- A shell in the repository runs Ruby 4.0.7 → after `eval "$(rv shell env zsh)"`, `ruby -v` prints `ruby 4.0.7 (2026-09-15 revision 229531a6cf)`.
+- Both test files pass on Ruby 4.0.7 → `ruby -W:deprecated test/generate_themes_test.rb`: 35 runs, 0 failures, 0 errors. `ruby -W:deprecated test/preview_palette_test.rb`: 3 runs, 0 failures, 0 errors. Neither prints a warning.
+- Regenerating every theme on Ruby 4.0.7 changes no committed file → `ruby generate_themes.rb` exits 0. `git status --porcelain` is empty afterwards.
+- Both CI jobs install Ruby 4.0.7 and pass → PR #17 (`eirvandelden/solunized`, base `main`), run 37675871735 on head `cfa85de`: `Tests` and `Generated files match themes.yml` both pass. Each job's "Set up Ruby" log prints `Installed Ruby 4.0.7`. Round 1 listed this criterion as pending; it is now met.
+- Every action that the workflow pins to a release is at its latest stable release → `gh api repos/actions/checkout/releases/latest` still returns `v7.0.1`, the tag in `.github/workflows/ci.yml`. `spinel-coop/setup-rv` has 0 releases and only the tag `v1`; the intent puts it out of scope.
+
+Plan `## Proof` tests: `test/generate_themes_test.rb` and `test/preview_palette_test.rb` both exist. No test is added, weakened, skipped or deleted. Scope: `.github/` is unchanged, as the intent requires. Ruby 4.0.7 is still the newest 4.x release; the newer `v3_4_11` (2026-09-23) is on an older line.
