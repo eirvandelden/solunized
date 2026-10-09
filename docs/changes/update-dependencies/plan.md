@@ -8,7 +8,7 @@ The generator, its tests and CI run on Ruby 4.0.6, pinned in `.ruby-version`. Ru
 
 Planning checks on 2026-10-06:
 
-- `.ruby-version` is the only file in the repository that names a Ruby version. `README.md`, `AGENTS.md` and `docs/` name none.
+- `.ruby-version` pins the Ruby version. `README.md:41` states a floor, `Ruby (≥ 3.0)`. `AGENTS.md` and `docs/` name none.
 - rv has Ruby 4.0.7 installed at `~/.local/share/rv/rubies/ruby-4.0.7/bin/ruby`.
 - On that Ruby, `test/generate_themes_test.rb` passes (35 runs, 0 failures) and `test/preview_palette_test.rb` passes (3 runs, 0 failures).
 - With `-W:deprecated`, neither test file prints a deprecation warning on that Ruby.
@@ -18,7 +18,7 @@ Planning checks on 2026-10-06:
 
 ## Design decisions
 
-- **The change is one line in one file.** `.ruby-version` goes from `4.0.6` to `4.0.7`. No other file changes. The CI workflow stays unchanged, because `ruby-version: current` already reads `.ruby-version`.
+- **The change is one line in each of three files.** `.ruby-version` goes from `4.0.6` to `4.0.7`. After review round 1, Etienne decided to move to Ruby 4 everywhere, so the README floor moves to `Ruby (≥ 4.0)` and `AGENTS.md` stops pointing at system Ruby. The CI workflow stays unchanged, because `ruby-version: current` already reads `.ruby-version`.
 - **Commands prove the change, not a new Minitest test.** The bump adds no behaviour of its own. The existing suites, a regeneration diff and the CI run prove it. Step 1's failing acceptance check is `ruby -v` in the repository, which prints 4.0.6 before the bump. This departs from playbook §7 rule 3 ("never generate code without a corresponding test"). The departure is deliberate: `.ruby-version` is configuration, not code.
 - **The plan rejects a guard test that asserts `RUBY_VERSION` equals `.ruby-version`.** It would fail for any run on another installed Ruby. rv and setup-rv already enforce the match.
 - **A pull request against `origin` proves the CI criterion.** No pull request template exists, so the body is free-form. The playbook allows the push and pull request to `eirvandelden/solunized` without asking.
@@ -32,6 +32,8 @@ Planning checks on 2026-10-06:
 ## Files that change
 
 - `.ruby-version` — `4.0.6` becomes `4.0.7`.
+- `README.md` — the Ruby floor `Ruby (≥ 3.0)` becomes `Ruby (≥ 4.0)` (review round 1).
+- `AGENTS.md` — the test commands run with the Ruby that rv selects, not system Ruby (review round 3).
 
 ## Order of work
 
