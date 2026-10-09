@@ -38,7 +38,7 @@ Colours follow the [Selenized naming convention](https://github.com/jan-warchol/
 
 ### Requirements
 
-- Ruby (≥ 3.0)
+- Ruby (≥ 4.0)
 - `plutil` (optional, only needed for Terminal.app profile generation)
 
 ### Usage

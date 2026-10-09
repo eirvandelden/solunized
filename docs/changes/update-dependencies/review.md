@@ -2,7 +2,7 @@
 
 ## Round 1 — 2026-10-07T19:34:26Z — b4e2cab
 
-- [ ] Nit: The plan's planning check says `.ruby-version` is the only file that names a Ruby version and that `README.md` names none. `README.md:41` states the requirement `Ruby (≥ 3.0)`. It is a floor, not a pin, so the bump does not make it wrong and no edit is required. The planning claim is inaccurate, and CI only runs the `.ruby-version` Ruby, so nothing tests the 3.0 floor. — `docs/changes/update-dependencies/plan.md:11` →
+- [ ] Nit: The plan's planning check says `.ruby-version` is the only file that names a Ruby version and that `README.md` names none. `README.md:41` states the requirement `Ruby (≥ 3.0)`. It is a floor, not a pin, so the bump does not make it wrong and no edit is required. The planning claim is inaccurate, and CI only runs the `.ruby-version` Ruby, so nothing tests the 3.0 floor. — `docs/changes/update-dependencies/plan.md:11` → fixed (Require Ruby 4.0 in the README)
 
 Passes: Bugs: nothing found. The code diff is one line, `.ruby-version` `4.0.6` → `4.0.7`, with the trailing newline kept. Security: nothing found. No code, workflow or dependency source changed.
 
