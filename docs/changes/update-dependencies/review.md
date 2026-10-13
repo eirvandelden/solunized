@@ -48,3 +48,21 @@ Compliance, from `intent.md` acceptance criteria. The plan proves them with comm
 - Every action that the workflow pins to a release is at its latest stable release → unchanged since Round 2. `.github/` has no diff.
 
 Plan `## Proof` tests: `test/generate_themes_test.rb` and `test/preview_palette_test.rb` both exist. No test is added, weakened, skipped or deleted. Round 1's Nit is marked `→ fixed (Require Ruby 4.0 in the README)`.
+
+## Round 4 — 2026-10-13T07:33:26Z — 54135b7
+
+- [ ] Important: PR #17 was squash-merged into `main` as `3651aa1` at 2026-10-13T07:32:24Z, from head `cfa85de`. The five later commits on this branch (`86f12e7`, `9e0d56f`, `f189557`, `9955336`, `54135b7`) are not on `main`, and no open pull request carries them. `git diff origin/main HEAD` still shows the README floor `Ruby (≥ 3.0)` → `Ruby (≥ 4.0)` and the `AGENTS.md` test-command fix as unmerged. The branch is not rebased: its merge base is `2adecb8`, not `3651aa1`. Rebase onto `origin/main` (drop the four commits that the squash already holds), then open a new pull request for the remaining change. — `README.md:41`, `AGENTS.md:15`
+- [ ] Important: `main` now holds `docs/changes/update-dependencies/` (`intent.md`, `plan.md`, round 1 of `review.md`). The `finish` skill (§4) removes the change folder before the pull request merges; that step did not run for PR #17. The copy on `main` still has the old `plan.md:11` claim that `README.md` names no Ruby version, and "No other file changes". The follow-up pull request should end with `finish`, so that `git rm -r docs/changes/update-dependencies` lands on `main`. — `docs/changes/update-dependencies/plan.md:11`
+- [ ] Nit: `plan.md` now lists three files under "Files that change", but "Order of work" still says to commit `.ruby-version` alone (step 5) and expects only ` M .ruby-version` after regeneration (step 4). No step covers the `README.md` or `AGENTS.md` edits. Add one step for the two doc edits, or note them as review-round additions under step 5. — `docs/changes/update-dependencies/plan.md:46`
+
+Passes: Bugs: nothing found. Against `origin/main` the code diff is `README.md:41` and `AGENTS.md:15`, both prose; neither generator nor test code changed. `CLAUDE.md` is a symlink to `AGENTS.md`, so it follows. No other file outside `docs/` and `dist/` names a Ruby version or "system Ruby". Security: nothing found. No code, workflow, dependency source or credential changed. The repository has no `REVIEW.md` or `REVIEW.local.md`, so the default Bugs, Security and Compliance passes apply.
+
+Compliance, from `intent.md` acceptance criteria. The plan proves them with commands, not new Minitest tests.
+
+- A shell in the repository runs Ruby 4.0.7 → after `eval "$(rv shell env zsh)"`, `ruby -v` prints `ruby 4.0.7 (2026-09-15 revision 229531a6cf) +PRISM [arm64-darwin23]`.
+- Both test files pass on Ruby 4.0.7 → `ruby -W:deprecated test/generate_themes_test.rb`: 35 runs, 0 failures, 0 errors. `ruby -W:deprecated test/preview_palette_test.rb`: 3 runs, 0 failures, 0 errors. Neither prints a warning.
+- Regenerating every theme on Ruby 4.0.7 changes no committed file → `ruby generate_themes.rb` exits 0. `git status --porcelain` is empty afterwards.
+- Both CI jobs install Ruby 4.0.7 and pass → met on PR #17 head `cfa85de` (Round 2). `origin/main` now has `.ruby-version` at `4.0.7`. CI has not run on the five unmerged commits; they touch only prose.
+- Every action that the workflow pins to a release is at its latest stable release → unchanged since Round 2. `.github/` has no diff.
+
+Round 3's two Nits are marked fixed: `f189557` updates `AGENTS.md:15`, and `54135b7` records the README and `AGENTS.md` edits in `plan.md`. Plan `## Proof` tests: both test files exist. No test is added, weakened, skipped or deleted.
