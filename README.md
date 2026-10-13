@@ -47,6 +47,7 @@ This reads `themes.yml` and all files in `applications/`, then produces:
 
 - `dist/<app>/` (or another configured `output_dir`) — application-specific theme files
 - `docs/colors.md` — AI-readable markdown with colour tables for all variants
+- `docs/slack.md` — a guide to pasting each variant into Slack's custom theme
 
 When `plutil` is unavailable (common on Linux), Terminal.app generation is skipped and all other outputs are still generated.
 

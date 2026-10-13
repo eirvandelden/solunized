@@ -70,7 +70,7 @@ Round 3's two Nits are marked fixed: `f189557` updates `AGENTS.md:15`, and `5413
 ## Round 5 — 2026-10-13T07:36:05Z — dd7422d
 
 - [ ] Nit: "Files that change" lists `README.md` twice, once for the floor and once for the paragraph joins. Merge them into one entry that names both edits. — `docs/changes/update-dependencies/plan.md:35`
-- [ ] Nit: The "Usage" list names `dist/<app>/` and `docs/colors.md` as outputs, but `ruby generate_themes.rb` also writes `docs/slack.md` (`applications/slack/configuration.yml:4`). The gap predates this branch (PR #16), and this branch now edits the README. Add a `docs/slack.md` line, in a separate commit or pull request. — `README.md:49`
+- [ ] Nit: The "Usage" list names `dist/<app>/` and `docs/colors.md` as outputs, but `ruby generate_themes.rb` also writes `docs/slack.md` (`applications/slack/configuration.yml:4`). The gap predates this branch (PR #16), and this branch now edits the README. Add a `docs/slack.md` line, in a separate commit or pull request. — `README.md:49` → fixed (List docs/slack.md as a generated output)
 
 Passes: Bugs: nothing found. Against `origin/main` (merge base `3651aa1`, so the Round 4 rebase holds), the code diff is `README.md` and `AGENTS.md:15`, both prose. The README joins change no rendered output: each joined paragraph and list item keeps its text and its indentation. Neither generator nor test code changed. Security: nothing found. No code, workflow, dependency source or credential changed. The repository has no `REVIEW.md` or `REVIEW.local.md`, so the default Bugs, Security and Compliance passes apply.
 
