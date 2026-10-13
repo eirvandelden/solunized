@@ -80,8 +80,11 @@ end
 # ---------------------------------------------------------------------------
 
 class GlowApplicationTest < Minitest::Test
-  PALETTE_SAFE_CHROMA = %w[#ansidarkred #ansidarkgreen #ansidarkblue #ansipurple #ansiteal].freeze
-  GHOSTTY_SLOTS = { "blue" => 4, "cyan" => 6, "green" => 2 }.freeze
+  CHROMA_SLOTS = {
+    "#ansidarkred" => 1, "#ansidarkgreen" => 2, "#ansidarkblue" => 4, "#ansipurple" => 5, "#ansiteal" => 6
+  }.freeze
+  PALETTE_SAFE_CHROMA = CHROMA_SLOTS.keys.freeze
+  GHOSTTY_SLOTS = { "red" => 1, "green" => 2, "blue" => 4, "magenta" => 5, "cyan" => 6, "dim_0" => 7 }.freeze
 
   def setup
     @glow_dir = Dir.mktmpdir
@@ -144,6 +147,13 @@ class GlowApplicationTest < Minitest::Test
     assert_equal slot("blue"), @style.fetch("heading").fetch("color")
     assert_equal slot("cyan"), @style.fetch("link").fetch("color")
     assert_equal slot("green"), @style.fetch("code").fetch("color")
+    assert_ghostty_palette_matches_slots
+  end
+
+  def test_every_slot_the_style_uses_is_checked_against_the_ghostty_palette
+    used = colours_in(@style).map { |colour| CHROMA_SLOTS.fetch(colour) { Integer(colour) } }.uniq
+
+    used.each { |index| assert_includes GHOSTTY_SLOTS.values, index, "slot #{index} is not checked" }
     assert_ghostty_palette_matches_slots
   end
 
