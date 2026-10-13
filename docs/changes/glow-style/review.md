@@ -51,3 +51,9 @@ Compliance (intent acceptance criteria, as amended by plan.md):
 Every test named in plan.md's `## Proof` exists. No existing test was weakened, skipped or deleted.
 
 No findings.
+
+## Round 2 — 2026-10-13T13:40Z — ab601e7 (codex)
+
+Reviewer: `codex review --base origin/main`. It ran both test suites, generated the style, and rendered `README.md` and a Markdown sample with a Ruby code block through glow 3.0.0: exit 0, empty stderr. The output used only palette slots: `1`, `3`, `32`, `34;1`, `36;1`, `36;4`, `38;5;2`, `38;5;5`.
+
+No findings.
