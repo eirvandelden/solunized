@@ -1,0 +1,4 @@
+glow:
+  output_dir: dist/glow
+  per_theme: false
+  filename: solunized.json

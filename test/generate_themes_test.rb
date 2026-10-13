@@ -574,6 +574,7 @@ class FullApplicationIntegrationTest < Minitest::Test
     assert File.exist?(File.join(@tmpdir, "out", "nvim", "colors", "solunized.lua"))
     assert File.exist?(File.join(@tmpdir, "out", "nvim", "lua", "lualine", "themes", "solunized.lua"))
     assert File.exist?(File.join(@tmpdir, "out", "zed", "solunized-theme.json"))
+    assert File.exist?(File.join(@tmpdir, "out", "glow", "solunized.json"))
     assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "ghostty", "*")).size
     assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "nova", "Themes", "*.css")).size
     assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "mvpa-css", "*.css")).size
