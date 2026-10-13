@@ -1,1 +1,150 @@
-{}
+<%
+  # ANSI slots of Ghostty's Solunized palette (applications/ghostty/template.config.erb).
+  slot = {
+    "red" => 1, "green" => 2, "yellow" => 3, "blue" => 4, "magenta" => 5, "cyan" => 6,
+    "dim_0" => 7
+  }
+  # Chroma names that glamour's terminal256 formatter keeps on palette slots 1-6.
+  chroma = {
+    "red" => "#ansidarkred", "green" => "#ansidarkgreen", "blue" => "#ansidarkblue",
+    "magenta" => "#ansipurple", "cyan" => "#ansiteal"
+  }
+-%>
+{
+  "document": {
+    "block_prefix": "\n",
+    "block_suffix": "\n",
+    "margin": 2
+  },
+  "block_quote": {
+    "indent": 1,
+    "indent_token": "│ ",
+    "color": "<%= slot["dim_0"] %>"
+  },
+  "paragraph": {},
+  "list": {
+    "level_indent": 2
+  },
+  "heading": {
+    "block_suffix": "\n",
+    "color": "<%= slot["blue"] %>",
+    "bold": true
+  },
+  "h1": {
+    "prefix": "# "
+  },
+  "h2": {
+    "prefix": "## "
+  },
+  "h3": {
+    "prefix": "### "
+  },
+  "h4": {
+    "prefix": "#### "
+  },
+  "h5": {
+    "prefix": "##### "
+  },
+  "h6": {
+    "prefix": "###### ",
+    "color": "<%= slot["dim_0"] %>",
+    "bold": false
+  },
+  "text": {},
+  "strikethrough": {
+    "crossed_out": true
+  },
+  "emph": {
+    "italic": true
+  },
+  "strong": {
+    "bold": true
+  },
+  "hr": {
+    "color": "<%= slot["dim_0"] %>",
+    "format": "\n--------\n"
+  },
+  "item": {
+    "block_prefix": "• "
+  },
+  "enumeration": {
+    "block_prefix": ". "
+  },
+  "task": {
+    "ticked": "[✓] ",
+    "unticked": "[ ] "
+  },
+  "link": {
+    "color": "<%= slot["cyan"] %>",
+    "underline": true
+  },
+  "link_text": {
+    "color": "<%= slot["cyan"] %>",
+    "bold": true
+  },
+  "image": {
+    "color": "<%= slot["magenta"] %>",
+    "underline": true
+  },
+  "image_text": {
+    "color": "<%= slot["dim_0"] %>",
+    "format": "Image: {{.text}} →"
+  },
+  "code": {
+    "color": "<%= slot["green"] %>"
+  },
+  "code_block": {
+    "margin": 2,
+    "chroma": {
+      "comment": {
+        "italic": true
+      },
+      "error": {
+        "color": "<%= chroma["red"] %>"
+      },
+      "keyword": {
+        "color": "<%= chroma["blue"] %>",
+        "bold": true
+      },
+      "keyword_constant": {
+        "color": "<%= chroma["magenta"] %>"
+      },
+      "keyword_type": {
+        "color": "<%= chroma["blue"] %>"
+      },
+      "name_attribute": {
+        "color": "<%= chroma["blue"] %>"
+      },
+      "name_builtin": {
+        "color": "<%= chroma["green"] %>"
+      },
+      "name_class": {
+        "color": "<%= chroma["green"] %>"
+      },
+      "name_constant": {
+        "color": "<%= chroma["magenta"] %>"
+      },
+      "name_function": {
+        "color": "<%= chroma["green"] %>"
+      },
+      "name_tag": {
+        "color": "<%= chroma["blue"] %>"
+      },
+      "literal_number": {
+        "color": "<%= chroma["magenta"] %>"
+      },
+      "literal_string": {
+        "color": "<%= chroma["cyan"] %>"
+      },
+      "generic_deleted": {
+        "color": "<%= chroma["red"] %>"
+      },
+      "generic_inserted": {
+        "color": "<%= chroma["green"] %>"
+      }
+    }
+  },
+  "definition_description": {
+    "block_prefix": "\n🠶 "
+  }
+}
