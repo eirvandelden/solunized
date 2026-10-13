@@ -76,6 +76,136 @@ class NovaApplicationTest < Minitest::Test
 end
 
 # ---------------------------------------------------------------------------
+# Glow application
+# ---------------------------------------------------------------------------
+
+class GlowApplicationTest < Minitest::Test
+  CHROMA_SLOTS = {
+    "#ansidarkred" => 1, "#ansidarkgreen" => 2, "#ansidarkblue" => 4, "#ansipurple" => 5, "#ansiteal" => 6
+  }.freeze
+  PALETTE_SAFE_CHROMA = CHROMA_SLOTS.keys.freeze
+  GHOSTTY_SLOTS = { "red" => 1, "green" => 2, "blue" => 4, "magenta" => 5, "cyan" => 6, "dim_0" => 7 }.freeze
+
+  def setup
+    @glow_dir = Dir.mktmpdir
+    @ghostty_dir = Dir.mktmpdir
+    @workspace_root = File.expand_path("..", __dir__)
+    @themes = YAML.load_file(File.join(@workspace_root, "themes.yml"))["themes"]
+
+    generate("glow", "template.json.erb", @glow_dir)
+    generate("ghostty", "template.config.erb", @ghostty_dir)
+
+    @raw = File.read(File.join(@glow_dir, "solunized.json"), encoding: "UTF-8")
+    @style = JSON.parse(@raw)
+  end
+
+  def teardown
+    FileUtils.rm_rf(@glow_dir)
+    FileUtils.rm_rf(@ghostty_dir)
+  end
+
+  def test_writes_one_style_file_named_solunized_json
+    assert_equal [ "solunized.json" ], Dir.children(@glow_dir)
+  end
+
+  def test_output_is_valid_json
+    assert_kind_of Hash, @style
+  end
+
+  def test_every_colour_outside_chroma_is_an_ansi_number_from_0_to_15
+    colours = colours_in(@style.reject { |key, _| key == "code_block" }) +
+      colours_in(@style.fetch("code_block").reject { |key, _| key == "chroma" })
+
+    refute_empty colours
+    colours.each { |colour| assert_match(/\A(?:[0-9]|1[0-5])\z/, colour) }
+  end
+
+  def test_every_chroma_colour_is_a_palette_safe_name
+    colours = colours_in(@style.fetch("code_block").fetch("chroma"))
+
+    refute_empty colours
+    colours.each { |colour| assert_includes PALETTE_SAFE_CHROMA, colour }
+  end
+
+  def test_chroma_comments_are_italic_without_colour
+    comment = @style.fetch("code_block").fetch("chroma").fetch("comment")
+
+    assert_equal true, comment.fetch("italic")
+    refute comment.key?("color")
+  end
+
+  def test_has_no_hex_colours
+    refute_match(/#(?:\h{8}|\h{6}|\h{4}|\h{3})\b/, @raw)
+  end
+
+  def test_has_no_background_colours
+    refute_includes key_names(@style), "background_color"
+    refute_includes key_names(@style), "background"
+  end
+
+  def test_headings_links_and_code_use_the_ghostty_slots_for_blue_cyan_and_green
+    assert_equal slot("blue"), @style.fetch("heading").fetch("color")
+    assert_equal slot("cyan"), @style.fetch("link").fetch("color")
+    assert_equal slot("green"), @style.fetch("code").fetch("color")
+    assert_ghostty_palette_matches_slots
+  end
+
+  def test_every_slot_the_style_uses_is_checked_against_the_ghostty_palette
+    used = colours_in(@style).map { |colour| CHROMA_SLOTS.fetch(colour) { Integer(colour) } }.uniq
+
+    used.each { |index| assert_includes GHOSTTY_SLOTS.values, index, "slot #{index} is not checked" }
+    assert_ghostty_palette_matches_slots
+  end
+
+  def test_body_text_has_no_colour
+    refute @style.fetch("document").key?("color")
+  end
+
+  private
+
+  def generate(app, template, output_dir)
+    config = YAML.load_file(File.join(@workspace_root, "applications/#{app}/configuration.yml")).fetch(app)
+    config["output_dir"] = output_dir
+    process_erb_app(@themes, config, File.join(@workspace_root, "applications/#{app}/#{template}"))
+  end
+
+  def slot(name)
+    GHOSTTY_SLOTS.fetch(name).to_s
+  end
+
+  def assert_ghostty_palette_matches_slots
+    @themes.each_key do |variant|
+      palette = ghostty_palette(variant)
+      GHOSTTY_SLOTS.each do |name, index|
+        assert_equal @themes[variant]["colors"][name], palette[index], "#{variant} #{name} slot #{index}"
+      end
+    end
+  end
+
+  def ghostty_palette(variant)
+    File.read(File.join(@ghostty_dir, "solunized-#{variant}"), encoding: "UTF-8")
+      .scan(/^palette = (\d+)=(#\h+)$/)
+      .to_h { |index, hex| [ index.to_i, hex ] }
+  end
+
+  def colours_in(node)
+    case node
+    when Hash then node.flat_map { |key, value| key.end_with?("color") ? [ value ] : colours_in(value) }
+    when Array then node.flat_map { |value| colours_in(value) }
+    else []
+    end
+  end
+
+  def key_names(node)
+    case node
+    when Hash then node.keys + node.values.flat_map { |value| key_names(value) }
+    when Array then node.flat_map { |value| key_names(value) }
+    else []
+    end
+  end
+end
+
+# ---------------------------------------------------------------------------
 # ERB path
 # ---------------------------------------------------------------------------
 
@@ -574,6 +704,7 @@ class FullApplicationIntegrationTest < Minitest::Test
     assert File.exist?(File.join(@tmpdir, "out", "nvim", "colors", "solunized.lua"))
     assert File.exist?(File.join(@tmpdir, "out", "nvim", "lua", "lualine", "themes", "solunized.lua"))
     assert File.exist?(File.join(@tmpdir, "out", "zed", "solunized-theme.json"))
+    assert File.exist?(File.join(@tmpdir, "out", "glow", "solunized.json"))
     assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "ghostty", "*")).size
     assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "nova", "Themes", "*.css")).size
     assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "mvpa-css", "*.css")).size

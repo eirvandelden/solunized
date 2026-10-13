@@ -2,7 +2,7 @@
 
 ## What this is
 
-A personal colour theme: a higher-contrast variation of Solarized, inspired by Selenized. This repo is the generator that turns one colour definition into theme files for several apps (Nova, Ghostty, Neovim, Terminal.app, Zed, Herdr) plus a CSS variable file (`mvpa-css`), a Markdown colour reference (`docs/colors.md`), and a Markdown guide to Slack's paste-in custom theme (`docs/slack.md`). No runtime service, no users other than the maintainer's own machines.
+A personal colour theme: a higher-contrast variation of Solarized, inspired by Selenized. This repo is the generator that turns one colour definition into theme files for several apps (Nova, Ghostty, Neovim, Terminal.app, Zed, Herdr, Glow) plus a CSS variable file (`mvpa-css`), a Markdown colour reference (`docs/colors.md`), and a Markdown guide to Slack's paste-in custom theme (`docs/slack.md`). No runtime service, no users other than the maintainer's own machines.
 
 ## Domain
 

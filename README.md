@@ -84,6 +84,7 @@ still generated.
 | [Terminal.app](https://support.apple.com/guide/terminal/welcome/mac) | [`applications/terminal/configuration.yml`](applications/terminal/configuration.yml) |
 | [Zed](https://zed.dev) | [`applications/zed/configuration.yml`](applications/zed/configuration.yml) |
 | Herdr | [`applications/herdr/configuration.yml`](applications/herdr/configuration.yml) |
+| [Glow](https://github.com/charmbracelet/glow) | [`applications/glow/configuration.yml`](applications/glow/configuration.yml) — one style that uses only the terminal's ANSI palette, so it shows Solunized colours only in a terminal running a Solunized palette, such as Ghostty |
 | [Slack](https://slack.com) | [`applications/slack/configuration.yml`](applications/slack/configuration.yml) — generates [`docs/slack.md`](docs/slack.md), a guide to pasting a custom theme in by hand |
 
 ## Licence
