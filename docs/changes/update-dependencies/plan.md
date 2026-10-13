@@ -34,6 +34,7 @@ Planning checks on 2026-10-06:
 - `.ruby-version` — `4.0.6` becomes `4.0.7`.
 - `README.md` — the Ruby floor `Ruby (≥ 3.0)` becomes `Ruby (≥ 4.0)` (review round 1).
 - `AGENTS.md` — the test commands run with the Ruby that rv selects, not system Ruby (review round 3).
+- `README.md` — join the paragraphs that were split across source lines (Etienne, after review round 3).
 
 ## Order of work
 
@@ -45,6 +46,7 @@ Planning checks on 2026-10-06:
 6. Re-check the action pins. `gh api repos/actions/checkout/releases/latest --jq .tag_name` must print `v7.0.1`. If it prints a newer tag, stop and ask Etienne: the bump then needs a `.github/workflows/ci.yml` edit, and that needs explicit approval.
 7. Run `review` (report-only; the pre-push check requires a fresh report for a branch with a change folder). Then push with `git push -u origin HEAD`. Open a pull request against `main` on `origin`.
 8. Run `gh pr checks --watch` until both jobs finish. Both are green. In each job's log (`gh run view <run-id> --log`), the "Set up Ruby" step installs Ruby 4.0.7.
+9. Review-round additions, after PR #17 merged with steps 1–8: rebase the branch onto `main`. Commit each doc edit alone: the README floor (`Require Ruby 4.0 in the README`), the `AGENTS.md` test commands (`Point the test commands at the rv Ruby`), and the README paragraph joins (`Join hardwrapped paragraphs in the README`). Run `review` until it is clean. Open a follow-up pull request, then run `finish` so it removes this change folder from `main`.
 
 ## Risks
 
