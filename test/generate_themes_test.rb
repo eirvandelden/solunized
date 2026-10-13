@@ -135,7 +135,7 @@ class GlowApplicationTest < Minitest::Test
   end
 
   def test_has_no_hex_colours
-    refute_match(/#\h{6}\b|#\h{3}\b/, @raw)
+    refute_match(/#(?:\h{8}|\h{6}|\h{4}|\h{3})\b/, @raw)
   end
 
   def test_has_no_background_colours

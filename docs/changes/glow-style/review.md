@@ -19,7 +19,7 @@ Every test named in plan.md's `## Proof` exists. No existing test was weakened, 
 
 - [ ] Nit: The slot test checks only blue, cyan and green against Ghostty's palette. The template also uses `dim_0` (slot 7, for `block_quote`, `hr`, `h6` and `image_text`) and `magenta` (slot 5, for `image`). A Ghostty reorder of those slots does not make any test fail, but the plan's Risks section says palette drift "is covered by the slot test". `GHOSTTY_SLOTS` also copies the template's slot hash, so the test never reads the template's own mapping. — `test/generate_themes_test.rb:84` → fixed (Check every Ghostty slot the glow style uses)
 - [ ] Nit: The plan says the template's slot hash maps every Selenized name to its slot (`fg_0` 0 … `br_cyan` 14) and is "the only place this mapping is written down". The hash holds only `red` to `dim_0` (slots 1–7), so the written record of the mapping is incomplete. — `applications/glow/template.json.erb:3` →
-- [ ] Nit: The no-hex regex `/#\h{6}\b|#\h{3}\b/` does not match an 8-digit hex colour such as `#aabbccdd`, because no word boundary follows the sixth digit. — `test/generate_themes_test.rb:135` →
+- [ ] Nit: The no-hex regex `/#\h{6}\b|#\h{3}\b/` does not match an 8-digit hex colour such as `#aabbccdd`, because no word boundary follows the sixth digit. — `test/generate_themes_test.rb:135` → fixed (Match 4- and 8-digit hex colours in the glow style test)
 
 ## Round 1 — 2026-10-13T13:20Z — d2e1a41 (codex)
 
