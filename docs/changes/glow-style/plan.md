@@ -5,7 +5,7 @@ From `intent.md` (2026-10-13). Status: accepted.
 ## Design decisions
 
 - One combined output: `applications/glow/configuration.yml` sets `per_theme: false`, `output_dir: dist/glow`, `filename: solunized.json`. The style is the same for every variant, because the terminal palette carries the variant.
-- Colours are named, not numbered, in the template. The top of `template.json.erb` holds one ERB hash that maps Selenized names to the ANSI slot Ghostty's Solunized palette gives them (`applications/ghostty/template.config.erb`): `fg_0` 0, `red` 1, `green` 2, `yellow` 3, `blue` 4, `magenta` 5, `cyan` 6, `dim_0` 7, `fg_1` 8, `br_red` 9 … `br_cyan` 14. JSON allows no comments, so the hash is the only place this mapping is written down. The generator (`generate_themes.rb`) does not change.
+- Colours are named, not numbered, in the template. The top of `template.json.erb` holds one ERB hash that maps Selenized names to the ANSI slot Ghostty's Solunized palette gives them (`applications/ghostty/template.config.erb`). It holds slots 1–7: `red` 1, `green` 2, `yellow` 3, `blue` 4, `magenta` 5, `cyan` 6, `dim_0` 7. Ghostty's full layout stays in its own template. JSON allows no comments, so the hash is the only place in the glow target where this mapping is written down. The generator (`generate_themes.rb`) does not change.
 - Glamour colours are JSON strings (`"color": "4"`), as in glamour's own `dark.json`.
 - Element colours:
   - `document`: no colour, so body text uses the terminal foreground (`fg_1` in Ghostty). This is the most readable choice in both modes.
