@@ -12,7 +12,7 @@ A personal colour theme: a higher-contrast variation of Solarized, inspired by S
 
 - `ruby generate_themes.rb` — regenerate all outputs from `themes.yml`.
 - `ruby preview_palette.rb [variant]` — print one variant's colours as text on its own background, for a readability check in the terminal (default `light`).
-- `ruby test/generate_themes_test.rb` and `ruby test/preview_palette_test.rb` — Minitest, run directly with system Ruby; there is no `Gemfile`, so no `bundle exec`.
+- `ruby test/generate_themes_test.rb` and `ruby test/preview_palette_test.rb` — Minitest, run directly with the Ruby that rv selects from `.ruby-version`; there is no `Gemfile`, so no `bundle exec`.
 - No linter is configured in this repo (no `.rubocop.yml`).
 
 ## Gotchas
