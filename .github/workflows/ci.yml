@@ -30,6 +30,9 @@ jobs:
       - name: Run preview_palette tests
         run: ruby test/preview_palette_test.rb
 
+      - name: Run sign_firefox tests
+        run: ruby test/sign_firefox_test.rb
+
   generated_files_current:
     name: Generated files match themes.yml
     runs-on: ubuntu-slim

@@ -2,17 +2,18 @@
 
 ## What this is
 
-A personal colour theme: a higher-contrast variation of Solarized, inspired by Selenized. This repo is the generator that turns one colour definition into theme files for several apps (Nova, Ghostty, Neovim, Terminal.app, Zed, Herdr, Glow) plus a CSS variable file (`mvpa-css`), a Markdown colour reference (`docs/colors.md`), and a Markdown guide to Slack's paste-in custom theme (`docs/slack.md`). No runtime service, no users other than the maintainer's own machines.
+A personal colour theme: a higher-contrast variation of Solarized, inspired by Selenized. This repo is the generator that turns one colour definition into theme files for several apps (Nova, Ghostty, Neovim, Terminal.app, Zed, Herdr, Glow, Firefox) plus a CSS variable file (`mvpa-css`), a Markdown colour reference (`docs/colors.md`), and a Markdown guide to Slack's paste-in custom theme (`docs/slack.md`). No runtime service, no users other than the maintainer's own machines.
 
 ## Domain
 
-`themes.yml` is the single source of truth: four variants (dark, light, black, white), each with metadata (`display_name`, `interface_style`, `accent_color`) and a `colors` map using the Selenized naming convention (`bg_0/1/2`, `dim_0`, `fg_0/1`, eight accent colours plus their `br_*` bright variants). Each `applications/<app>/configuration.yml` describes one consumption target: `output_dir`, `per_theme`, and `filename`/`filename_pattern`, paired with a matching `applications/<app>/template.<ext>.erb`, named after the output format. `generate_themes.rb` reads `themes.yml` and every `applications/*/configuration.yml`, resolves colour/metadata names against each theme via the template's `c(variant, name)`/`theme_data` helpers, and writes one output file per app per variant (or one combined file when `per_theme: false`). A generated output that a person reads (`applications/docs` → `docs/colors.md`, `applications/slack` → `docs/slack.md`) is committed and must stay in sync with `themes.yml` in git; a generated output that an application consumes lands under `dist/`, which is gitignored.
+`themes.yml` is the single source of truth: four variants (dark, light, black, white), each with metadata (`display_name`, `interface_style`, `accent_color`) and a `colors` map using the Selenized naming convention (`bg_0/1/2`, `dim_0`, `fg_0/1`, eight accent colours plus their `br_*` bright variants). Each `applications/<app>/configuration.yml` describes one consumption target: `output_dir`, `per_theme`, and `filename`/`filename_pattern`, paired with a matching `applications/<app>/template.<ext>.erb`, named after the output format. `generate_themes.rb` reads `themes.yml` and every `applications/*/configuration.yml`, resolves colour/metadata names against each theme via the template's `c(variant, name)`/`theme_data` helpers, and writes one output file per app per variant (or one combined file when `per_theme: false`). An application with an `add_ons` key (Firefox) writes one unpacked add-on directory and one zip per entry instead, from one manifest template. A generated output that a person reads (`applications/docs` → `docs/colors.md`, `applications/slack` → `docs/slack.md`) is committed and must stay in sync with `themes.yml` in git; a generated output that an application consumes lands under `dist/`, which is gitignored.
 
 ## Commands
 
 - `ruby generate_themes.rb` — regenerate all outputs from `themes.yml`.
 - `ruby preview_palette.rb [variant]` — print one variant's colours as text on its own background, for a readability check in the terminal (default `light`).
-- `ruby test/generate_themes_test.rb` and `ruby test/preview_palette_test.rb` — Minitest, run directly with the Ruby that rv selects from `.ruby-version`; there is no `Gemfile`, so no `bundle exec`.
+- `ruby sign_firefox.rb` — signs the Firefox add-ons through `npx web-ext sign`, which submits them to Mozilla. Only the maintainer runs it, from their own shell with `WEB_EXT_API_KEY` and `WEB_EXT_API_SECRET` set; an agent never does.
+- `ruby test/generate_themes_test.rb`, `ruby test/preview_palette_test.rb` and `ruby test/sign_firefox_test.rb` — Minitest, run directly with the Ruby that rv selects from `.ruby-version`; there is no `Gemfile`, so no `bundle exec`.
 - No linter is configured in this repo (no `.rubocop.yml`).
 
 ## Gotchas
