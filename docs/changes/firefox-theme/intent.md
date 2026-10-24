@@ -66,6 +66,10 @@ Etienne's Firefox. The Solunized generator: a new `applications/` entry, its tem
 - The generator covers the full key list; the nine Firefox Color keys are only the hand-entry values needed now — "the intent for the generator is the full list".
 - Signing is a separate script around `npx web-ext sign --channel unlisted`, run only by Etienne — he approved `web-ext` and asked "can we also do the signing and submitting?"
 - The generator zips each add-on and does not sign it — Firefox Color holds one theme, so hand entry cannot switch with dark mode: "applying by hand only allows 1 theme, so i'm stuck in light theme".
+- Colour mapping as the plan has it (`frame` and `toolbar_field` use `bg_0`, `toolbar` and `popup` use `bg_1`) — chosen by Etienne at the plan gate, no reason given.
+- `.github/workflows/ci.yml` gets one step that runs `test/sign_firefox_test.rb` — approved by Etienne for playbook rule 13.
+- Add-on ids `solunized-light-dark@eirvandelden.github.io` and `solunized-white-black@eirvandelden.github.io` — confirmed by Etienne; an id cannot change after the first signing.
+- The signing script signs the unpacked add-on directories, because `web-ext sign` takes a source directory; the zips stay for `about:debugging` and manual upload — confirmed by Etienne.
 
 ## Open questions
 
