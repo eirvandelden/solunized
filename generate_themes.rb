@@ -4,6 +4,8 @@ require "erb"
 require "base64"
 require "tempfile"
 require "open3"
+require "json"
+require "zlib"
 
 HEX_COLOR_PATTERN = /\A#[0-9A-Fa-f]{6}\z/
 
@@ -55,13 +57,10 @@ def validate_app_config!(app_file, raw_config)
     raise RuntimeError, "Invalid config in #{app_file}: application '#{app_name}' requires output_dir"
   end
 
-  per_theme = app_config["per_theme"]
-  unless per_theme == true || per_theme == false
-    raise RuntimeError, "Invalid config in #{app_file}: application '#{app_name}' requires per_theme: true|false"
-  end
-
-  if !per_theme && (!app_config["filename"].is_a?(String) || app_config["filename"].strip.empty?)
-    raise RuntimeError, "Invalid config in #{app_file}: application '#{app_name}' requires filename"
+  if app_config.key?("add_ons")
+    validate_add_ons!(app_file, app_name, app_config)
+  else
+    validate_per_theme!(app_file, app_name, app_config)
   end
 
   erb_file = erb_template_for(app_file)
@@ -70,6 +69,43 @@ def validate_app_config!(app_file, raw_config)
   end
 
   [ app_name, app_config, erb_file ]
+end
+
+def validate_per_theme!(app_file, app_name, app_config)
+  per_theme = app_config["per_theme"]
+  unless per_theme == true || per_theme == false
+    raise RuntimeError, "Invalid config in #{app_file}: application '#{app_name}' requires per_theme: true|false"
+  end
+
+  return if per_theme || present_string?(app_config["filename"])
+
+  raise RuntimeError, "Invalid config in #{app_file}: application '#{app_name}' requires filename"
+end
+
+# An add_ons application writes one add-on directory and zip per entry, so it needs a
+# manifest filename and a version, and each entry needs a name, id and two variants.
+def validate_add_ons!(app_file, app_name, app_config)
+  prefix = "Invalid config in #{app_file}: application '#{app_name}'"
+  add_ons = app_config["add_ons"]
+  unless add_ons.is_a?(Hash) && !add_ons.empty?
+    raise RuntimeError, "#{prefix} requires add_ons to be a non-empty mapping"
+  end
+
+  %w[filename version].each do |key|
+    raise RuntimeError, "#{prefix} requires #{key}" unless present_string?(app_config[key])
+  end
+
+  add_ons.each do |slug, settings|
+    %w[name id theme dark_theme].each do |key|
+      next if settings.is_a?(Hash) && present_string?(settings[key])
+
+      raise RuntimeError, "#{prefix} add-on '#{slug}' requires #{key}"
+    end
+  end
+end
+
+def present_string?(value)
+  value.is_a?(String) && !value.strip.empty?
 end
 
 # Templates are named "template.<ext>.erb", naming the output format (e.g. "template.md.erb").
@@ -190,15 +226,17 @@ rescue Errno::ENOENT
 end
 
 class ErbContext
-  def initialize(themes, variant = nil, theme_data = nil, plutil_command: "plutil", plutil_env: {})
+  def initialize(themes, variant = nil, theme_data = nil, plutil_command: "plutil", plutil_env: {}, add_on: nil)
     @themes     = themes
     @variant    = variant
     @theme_data = theme_data
     @plutil_command = plutil_command
     @plutil_env = plutil_env
+    @add_on     = add_on
   end
 
-  attr_reader :themes, :variant, :theme_data
+  # add_on is the settings hash of the Firefox add-on being rendered, nil for every other template.
+  attr_reader :themes, :variant, :theme_data, :add_on
 
   # Look up a colour hex value for a given variant and colour key.
   def c(v, name)
@@ -249,6 +287,8 @@ def process_erb_app(themes, app_config, erb_file, plutil_command: "plutil", plut
   template   = ERB.new(File.read(erb_file), trim_mode: "-")
   FileUtils.mkdir_p(output_dir)
 
+  return process_add_ons(themes, app_config, template) if app_config.key?("add_ons")
+
   if app_config["per_theme"]
     themes.each do |variant, theme_data|
       ctx      = ErbContext.new(
@@ -269,6 +309,62 @@ def process_erb_app(themes, app_config, erb_file, plutil_command: "plutil", plut
     File.write(filename, content)
     puts "Generated #{filename}"
   end
+end
+
+# Writes <output_dir>/<add-on>/<filename> and <output_dir>/<add-on>.zip for each add-on.
+# Both come from one rendered string, so the directory and the zip never drift apart.
+def process_add_ons(themes, app_config, template)
+  output_dir = app_config["output_dir"]
+  filename   = app_config["filename"]
+
+  app_config["add_ons"].each do |slug, settings|
+    add_on   = settings.merge("version" => app_config["version"], "slug" => slug)
+    manifest = template.result(ErbContext.new(themes, add_on: add_on).get_binding)
+    add_on_dir = File.join(output_dir, slug)
+    FileUtils.mkdir_p(add_on_dir)
+    File.write(File.join(add_on_dir, filename), manifest)
+    puts "Generated #{File.join(add_on_dir, filename)}"
+    puts "Generated #{write_zip(File.join(output_dir, "#{slug}.zip"), { filename => manifest })}"
+  end
+end
+
+# Writes a stored (uncompressed) zip with a fixed 1980-01-01 timestamp, so a re-run gives the same bytes.
+# entries maps an archive path to its content.
+def write_zip(path, entries)
+  offset  = 0
+  locals  = +"".b
+  central = +"".b
+
+  entries.each do |name, content|
+    name  = name.b
+    data  = content.b
+    crc   = Zlib.crc32(data)
+    local = zip_local_header(name, data, crc) + name + data
+    central << zip_central_header(name, data, crc, offset) << name
+    locals << local
+    offset += local.bytesize
+  end
+
+  File.binwrite(path, locals + central + zip_end_record(entries.size, central.bytesize, offset))
+  path
+end
+
+ZIP_VERSION = 20
+ZIP_UTF8_FLAG = 0x0800
+ZIP_DOS_DATE = 0x21 # 1980-01-01
+
+def zip_local_header(name, data, crc)
+  [ 0x04034b50, ZIP_VERSION, ZIP_UTF8_FLAG, 0, 0, ZIP_DOS_DATE, crc, data.bytesize, data.bytesize, name.bytesize, 0 ]
+    .pack("VvvvvvVVVvv")
+end
+
+def zip_central_header(name, data, crc, local_offset)
+  [ 0x02014b50, ZIP_VERSION, ZIP_VERSION, ZIP_UTF8_FLAG, 0, 0, ZIP_DOS_DATE, crc, data.bytesize, data.bytesize,
+    name.bytesize, 0, 0, 0, 0, 0, local_offset ].pack("VvvvvvvVVVvvvvvVV")
+end
+
+def zip_end_record(count, central_size, central_offset)
+  [ 0x06054b50, 0, 0, count, count, central_size, central_offset, 0 ].pack("VvvvvVVv")
 end
 
 # ---------------------------------------------------------------------------

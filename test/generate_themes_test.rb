@@ -3,6 +3,7 @@ require "tmpdir"
 require "yaml"
 require "base64"
 require "json"
+require "zlib"
 require "stringio"
 
 require_relative "../generate_themes"
@@ -680,6 +681,348 @@ class SlackApplicationTest < Minitest::Test
 end
 
 # ---------------------------------------------------------------------------
+# Firefox add-ons
+# ---------------------------------------------------------------------------
+
+# Reads a zip back through its central directory, with no unzip tool.
+# Returns { name => { data:, crc_ok: } }.
+def read_zip(path)
+  bytes = File.binread(path)
+  eocd = bytes.rindex([ 0x06054b50 ].pack("V"))
+  total, = bytes.byteslice(eocd + 10, 2).unpack("v")
+  offset, = bytes.byteslice(eocd + 16, 4).unpack("V")
+  entries = {}
+  total.times do
+    crc, size, _, name_len, extra_len, comment_len = bytes.byteslice(offset + 16, 18).unpack("VVVvvv")
+    local_offset, = bytes.byteslice(offset + 42, 4).unpack("V")
+    name = bytes.byteslice(offset + 46, name_len)
+    local_name_len, local_extra_len = bytes.byteslice(local_offset + 26, 4).unpack("vv")
+    data = bytes.byteslice(local_offset + 30 + local_name_len + local_extra_len, size)
+    entries[name] = { data: data, crc_ok: Zlib.crc32(data) == crc }
+    offset += 46 + name_len + extra_len + comment_len
+  end
+  entries
+end
+
+class WriteZipTest < Minitest::Test
+  def setup
+    @tmpdir = Dir.mktmpdir
+    @path = File.join(@tmpdir, "out.zip")
+  end
+
+  def teardown
+    FileUtils.rm_rf(@tmpdir)
+  end
+
+  def test_writes_each_entry_at_the_archive_root_with_a_matching_crc
+    write_zip(@path, { "manifest.json" => "{\"a\": 1}\n", "note.txt" => "café\n" })
+
+    entries = read_zip(@path)
+
+    assert_equal %w[manifest.json note.txt], entries.keys.sort
+    assert_equal "{\"a\": 1}\n", entries.fetch("manifest.json").fetch(:data)
+    assert_equal "café\n".b, entries.fetch("note.txt").fetch(:data)
+    assert entries.values.all? { |entry| entry.fetch(:crc_ok) }
+  end
+
+  def test_gives_the_same_bytes_on_every_run
+    write_zip(@path, { "manifest.json" => "{}\n" })
+    first = File.binread(@path)
+    sleep 0.01
+    write_zip(@path, { "manifest.json" => "{}\n" })
+
+    assert_equal first, File.binread(@path)
+  end
+
+  def test_returns_the_path
+    assert_equal @path, write_zip(@path, { "a" => "b" })
+  end
+
+  def test_is_accepted_by_unzip_when_it_is_installed
+    skip "unzip is not installed" unless system("which unzip > /dev/null 2>&1")
+
+    write_zip(@path, { "manifest.json" => "{}\n" })
+
+    assert system("unzip", "-tq", @path, out: File::NULL)
+  end
+end
+
+class AddOnProcessingTest < Minitest::Test
+  TEMPLATE = <<~ERB.freeze
+    <%= add_on["name"] %>|<%= add_on["id"] %>|<%= add_on["version"] %>|<%= add_on["slug"] %>|<%= c(add_on["theme"], "bg_0") %>|<%= c(add_on["dark_theme"], "bg_0") %>
+  ERB
+
+  def setup
+    @tmpdir = Dir.mktmpdir
+    @erb_file = File.join(@tmpdir, "template.json.erb")
+    File.write(@erb_file, TEMPLATE)
+    @config = {
+      "output_dir" => File.join(@tmpdir, "out"),
+      "filename"   => "manifest.json",
+      "version"    => "2.3.4",
+      "add_ons"    => {
+        "pair-one" => { "name" => "Pair One", "id" => "one@example.test", "theme" => "light", "dark_theme" => "dark" }
+      }
+    }
+  end
+
+  def teardown
+    FileUtils.rm_rf(@tmpdir)
+  end
+
+  def test_writes_one_directory_and_one_zip_per_add_on
+    @config["add_ons"]["pair-two"] = { "name" => "Pair Two", "id" => "two@example.test", "theme" => "dark", "dark_theme" => "light" }
+
+    process_erb_app(THEMES, @config, @erb_file)
+
+    assert File.file?(File.join(@tmpdir, "out", "pair-one", "manifest.json"))
+    assert File.file?(File.join(@tmpdir, "out", "pair-two", "manifest.json"))
+    assert File.file?(File.join(@tmpdir, "out", "pair-one.zip"))
+    assert File.file?(File.join(@tmpdir, "out", "pair-two.zip"))
+  end
+
+  def test_the_template_sees_its_add_on_settings_and_the_shared_version
+    process_erb_app(THEMES, @config, @erb_file)
+
+    manifest = File.read(File.join(@tmpdir, "out", "pair-one", "manifest.json"), encoding: "UTF-8")
+
+    assert_equal "Pair One|one@example.test|2.3.4|pair-one|#ffffff|#001122\n", manifest
+  end
+
+  def test_add_on_zip_holds_the_same_manifest_as_its_directory
+    process_erb_app(THEMES, @config, @erb_file)
+
+    manifest = File.binread(File.join(@tmpdir, "out", "pair-one", "manifest.json"))
+    entries = read_zip(File.join(@tmpdir, "out", "pair-one.zip"))
+
+    assert_equal [ "manifest.json" ], entries.keys
+    assert_equal manifest, entries.fetch("manifest.json").fetch(:data)
+  end
+
+  def test_regenerating_gives_identical_zip_bytes
+    process_erb_app(THEMES, @config, @erb_file)
+    first = File.binread(File.join(@tmpdir, "out", "pair-one.zip"))
+    process_erb_app(THEMES, @config, @erb_file)
+
+    assert_equal first, File.binread(File.join(@tmpdir, "out", "pair-one.zip"))
+  end
+
+  def test_an_unknown_variant_in_an_add_on_raises
+    @config["add_ons"]["pair-one"]["theme"] = "missing"
+
+    error = assert_raises(RuntimeError) { process_erb_app(THEMES, @config, @erb_file) }
+
+    assert_match(/Unknown theme variant 'missing'/, error.message)
+  end
+end
+
+class AddOnConfigValidationTest < Minitest::Test
+  def setup
+    @tmpdir = Dir.mktmpdir
+    @themes_yml = File.join(@tmpdir, "themes.yml")
+    File.write(@themes_yml, YAML.dump({ "themes" => THEMES }))
+    @apps_dir = File.join(@tmpdir, "apps")
+    @app_dir = File.join(@apps_dir, "browser")
+    FileUtils.mkdir_p(@app_dir)
+    File.write(File.join(@app_dir, "template.json.erb"), "<%= add_on['name'] %>\n")
+  end
+
+  def teardown
+    FileUtils.rm_rf(@tmpdir)
+  end
+
+  def test_accepts_add_ons_without_per_theme
+    write_config(version: '"1.0.0"', add_on_id: "a@example.test")
+
+    process_all_apps(themes_yml: @themes_yml, apps_dir: @apps_dir)
+
+    assert File.file?(File.join(@tmpdir, "out", "pair", "manifest.json"))
+  end
+
+  def test_rejects_an_add_on_without_an_id
+    write_config(version: '"1.0.0"', add_on_id: '""')
+
+    error = assert_raises(RuntimeError) { process_all_apps(themes_yml: @themes_yml, apps_dir: @apps_dir) }
+
+    assert_match(/Invalid config.*pair.*id/, error.message)
+  end
+
+  def test_rejects_add_ons_without_a_version
+    write_config(version: '""', add_on_id: "a@example.test")
+
+    error = assert_raises(RuntimeError) { process_all_apps(themes_yml: @themes_yml, apps_dir: @apps_dir) }
+
+    assert_match(/Invalid config.*version/, error.message)
+  end
+
+  def test_rejects_an_empty_add_ons_mapping
+    File.write(File.join(@app_dir, "configuration.yml"), <<~YAML)
+      browser:
+        output_dir: #{@tmpdir}/out
+        filename: manifest.json
+        version: "1.0.0"
+        add_ons: {}
+    YAML
+
+    error = assert_raises(RuntimeError) { process_all_apps(themes_yml: @themes_yml, apps_dir: @apps_dir) }
+
+    assert_match(/Invalid config.*add_ons/, error.message)
+  end
+
+  def test_rejects_add_ons_without_a_filename
+    File.write(File.join(@app_dir, "configuration.yml"), <<~YAML)
+      browser:
+        output_dir: #{@tmpdir}/out
+        version: "1.0.0"
+        add_ons:
+          pair: { name: Pair, id: a@example.test, theme: light, dark_theme: dark }
+    YAML
+
+    error = assert_raises(RuntimeError) { process_all_apps(themes_yml: @themes_yml, apps_dir: @apps_dir) }
+
+    assert_match(/Invalid config.*filename/, error.message)
+  end
+
+  private
+
+  def write_config(version:, add_on_id:)
+    File.write(File.join(@app_dir, "configuration.yml"), <<~YAML)
+      browser:
+        output_dir: #{@tmpdir}/out
+        filename: manifest.json
+        version: #{version}
+        add_ons:
+          pair:
+            name: Pair
+            id: #{add_on_id}
+            theme: light
+            dark_theme: dark
+    YAML
+  end
+end
+
+class FirefoxApplicationTest < Minitest::Test
+  # The 38 current MDN theme.colors keys, kept here independently of the template.
+  FIREFOX_COLOR_KEYS = %w[
+    bookmark_text button_background_active button_background_hover frame frame_inactive icons icons_attention
+    ntp_background ntp_card_background ntp_text popup popup_border popup_highlight popup_highlight_text popup_text
+    sidebar sidebar_border sidebar_highlight sidebar_highlight_text sidebar_text tab_background_text tab_line
+    tab_loading tab_selected tab_text toolbar toolbar_bottom_separator toolbar_field toolbar_field_border
+    toolbar_field_border_focus toolbar_field_focus toolbar_field_highlight toolbar_field_highlight_text
+    toolbar_field_text toolbar_field_text_focus toolbar_text toolbar_top_separator toolbar_vertical_separator
+  ].freeze
+
+  DEPRECATED_KEYS = %w[tab_background_separator toolbar_field_separator].freeze
+
+  def setup
+    @tmpdir = Dir.mktmpdir
+    @themes = load_yaml_hash(File.expand_path("../themes.yml", __dir__)).fetch("themes")
+    apps_dir = File.join(@tmpdir, "apps")
+    FileUtils.mkdir_p(apps_dir)
+    FileUtils.cp_r(File.expand_path("../applications/firefox", __dir__), apps_dir)
+    config_file = File.join(apps_dir, "firefox", "configuration.yml")
+    config = YAML.load_file(config_file)
+    config.fetch("firefox")["output_dir"] = File.join(@tmpdir, "out")
+    File.write(config_file, YAML.dump(config))
+
+    process_all_apps(themes_yml: File.expand_path("../themes.yml", __dir__), apps_dir: apps_dir)
+  end
+
+  def teardown
+    FileUtils.rm_rf(@tmpdir)
+  end
+
+  def test_has_thirty_eight_keys_in_the_test_list
+    assert_equal 38, FIREFOX_COLOR_KEYS.uniq.size
+  end
+
+  def test_writes_a_manifest_per_add_on
+    assert_equal %w[solunized-light-dark solunized-white-black],
+      Dir.glob(File.join(@tmpdir, "out", "*", "manifest.json")).map { |path| File.basename(File.dirname(path)) }.sort
+  end
+
+  def test_light_dark_frames_use_the_light_and_dark_backgrounds
+    manifest = manifest_for("solunized-light-dark")
+
+    assert_equal @themes.dig("light", "colors", "bg_0"), manifest.dig("theme", "colors", "frame")
+    assert_equal @themes.dig("dark", "colors", "bg_0"), manifest.dig("dark_theme", "colors", "frame")
+  end
+
+  def test_white_black_frames_use_the_white_and_black_backgrounds
+    manifest = manifest_for("solunized-white-black")
+
+    assert_equal @themes.dig("white", "colors", "bg_0"), manifest.dig("theme", "colors", "frame")
+    assert_equal @themes.dig("black", "colors", "bg_0"), manifest.dig("dark_theme", "colors", "frame")
+  end
+
+  def test_every_current_key_has_a_colour_of_its_variant
+    {
+      "solunized-light-dark" => { "theme" => "light", "dark_theme" => "dark" },
+      "solunized-white-black" => { "theme" => "white", "dark_theme" => "black" }
+    }.each do |add_on, sections|
+      manifest = manifest_for(add_on)
+      sections.each do |section, variant|
+        colors = manifest.fetch(section).fetch("colors")
+        palette = @themes.fetch(variant).fetch("colors").values
+
+        assert_equal FIREFOX_COLOR_KEYS.sort, colors.keys.sort, "#{add_on} #{section}"
+        colors.each_value do |value|
+          assert_match(HEX_COLOR_PATTERN, value)
+          assert_includes palette, value, "#{add_on} #{section}"
+        end
+      end
+    end
+  end
+
+  def test_has_no_deprecated_keys
+    Dir.glob(File.join(@tmpdir, "out", "*", "manifest.json")).each do |path|
+      manifest = JSON.parse(File.read(path, encoding: "UTF-8"))
+      %w[theme dark_theme].each do |section|
+        assert_empty DEPRECATED_KEYS & manifest.fetch(section).fetch("colors").keys
+      end
+    end
+  end
+
+  def test_dark_toolbar_text_differs_from_toolbar
+    colors = manifest_for("solunized-light-dark").fetch("dark_theme").fetch("colors")
+
+    refute_equal colors.fetch("toolbar"), colors.fetch("toolbar_text")
+  end
+
+  def test_each_add_on_has_its_own_name_and_id
+    light_dark = manifest_for("solunized-light-dark")
+    white_black = manifest_for("solunized-white-black")
+
+    assert_equal "Solunized Light & Dark", light_dark.fetch("name")
+    assert_equal "solunized-light-dark@eirvandelden.github.io", light_dark.dig("browser_specific_settings", "gecko", "id")
+    assert_equal "Solunized White & Black", white_black.fetch("name")
+    assert_equal "solunized-white-black@eirvandelden.github.io", white_black.dig("browser_specific_settings", "gecko", "id")
+    assert_match(/\A\d+\.\d+\.\d+\z/, light_dark.fetch("version"))
+  end
+
+  def test_each_add_on_zip_holds_its_manifest_at_the_root
+    %w[solunized-light-dark solunized-white-black].each do |add_on|
+      entries = read_zip(File.join(@tmpdir, "out", "#{add_on}.zip"))
+
+      assert_equal [ "manifest.json" ], entries.keys
+      assert_equal File.binread(File.join(@tmpdir, "out", add_on, "manifest.json")), entries.fetch("manifest.json").fetch(:data)
+    end
+  end
+
+  def test_the_template_holds_no_hex_colour
+    template = File.read(File.expand_path("../applications/firefox/template.json.erb", __dir__), encoding: "UTF-8")
+
+    refute_match(/#[0-9A-Fa-f]{6}/, template)
+  end
+
+  private
+
+  def manifest_for(add_on)
+    JSON.parse(File.read(File.join(@tmpdir, "out", add_on, "manifest.json"), encoding: "UTF-8"))
+  end
+end
+
+# ---------------------------------------------------------------------------
 # full application integration
 # ---------------------------------------------------------------------------
 
@@ -710,6 +1053,8 @@ class FullApplicationIntegrationTest < Minitest::Test
     assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "mvpa-css", "*.css")).size
     assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "herdr", "*.toml")).size
     assert_equal [], Dir.glob(File.join(@tmpdir, "out", "terminal", "*"))
+    assert File.file?(File.join(@tmpdir, "out", "firefox", "solunized-light-dark", "manifest.json"))
+    assert File.file?(File.join(@tmpdir, "out", "firefox", "solunized-white-black.zip"))
 
     zed_json = File.read(File.join(@tmpdir, "out", "zed", "solunized-theme.json"), encoding: "UTF-8")
     parsed = JSON.parse(zed_json)
