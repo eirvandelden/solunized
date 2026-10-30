@@ -96,6 +96,37 @@ def process_add_ons(themes, app_config, template)
 # Writes a stored (uncompressed) zip with a fixed 1980-01-01 timestamp, so a re-run gives the same bytes.
 #: (String path, Hash[String, String] entries) -> String
 def write_zip(path, entries)
+
+# Writes one add-on's directory and zip from the same manifest string.
+#: (String output_dir, String slug, String filename, String manifest) -> void
+def write_add_on(output_dir, slug, filename, manifest)
+
+# The whole stored-zip byte string for the entries.
+#: (Hash[String, String] entries) -> String
+def zip_archive(entries)
+
+# The local record and the central directory record of one entry.
+#: (String name, String data, Integer offset) -> [String, String]
+def zip_entry(name, data, offset)
+
+#: (String name, String data, Integer crc) -> String
+def zip_local_header(name, data, crc)
+
+#: (String name, String data, Integer crc, Integer local_offset) -> String
+def zip_central_header(name, data, crc, local_offset)
+
+#: (Integer count, Integer central_size, Integer central_offset) -> String
+def zip_end_record(count, central_size, central_offset)
+
+# Config checks called by validate_app_config!.
+#: (String app_file, String app_name, Hash[String, untyped] app_config) -> void
+def validate_per_theme!(app_file, app_name, app_config)
+
+#: (String prefix, String slug, untyped settings) -> void
+def validate_add_on!(prefix, slug, settings)
+
+#: (untyped value) -> bool
+def present_string?(value)
 ```
 
 - `process_erb_app` gets one new first branch: `return process_add_ons(themes, app_config, template) if app_config.key?("add_ons")`.
