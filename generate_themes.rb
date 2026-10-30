@@ -332,18 +332,21 @@ end
 # Both come from one rendered string, so the directory and the zip never drift apart.
 #: (Hash[String, untyped] themes, Hash[String, untyped] app_config, ERB template) -> void
 def process_add_ons(themes, app_config, template)
-  output_dir = app_config["output_dir"]
-  filename   = app_config["filename"]
-
   app_config["add_ons"].each do |slug, settings|
     add_on   = settings.merge("version" => app_config["version"], "slug" => slug)
     manifest = template.result(ErbContext.new(themes, add_on: add_on).get_binding)
-    add_on_dir = File.join(output_dir, slug)
-    FileUtils.mkdir_p(add_on_dir)
-    File.write(File.join(add_on_dir, filename), manifest)
-    puts "Generated #{File.join(add_on_dir, filename)}"
-    puts "Generated #{write_zip(File.join(output_dir, "#{slug}.zip"), { filename => manifest })}"
+    write_add_on(app_config["output_dir"], slug, app_config["filename"], manifest)
   end
+end
+
+# Writes one add-on's directory and zip from the same manifest string.
+#: (String output_dir, String slug, String filename, String manifest) -> void
+def write_add_on(output_dir, slug, filename, manifest)
+  add_on_dir = File.join(output_dir, slug)
+  FileUtils.mkdir_p(add_on_dir)
+  File.write(File.join(add_on_dir, filename), manifest)
+  puts "Generated #{File.join(add_on_dir, filename)}"
+  puts "Generated #{write_zip(File.join(output_dir, "#{slug}.zip"), { filename => manifest })}"
 end
 
 # Writes a stored (uncompressed) zip with a fixed 1980-01-01 timestamp, so a re-run gives the same bytes.
