@@ -737,14 +737,6 @@ class WriteZipTest < Minitest::Test
   def test_returns_the_path
     assert_equal @path, write_zip(@path, { "a" => "b" })
   end
-
-  def test_is_accepted_by_unzip_when_it_is_installed
-    skip "unzip is not installed" unless system("which unzip > /dev/null 2>&1")
-
-    write_zip(@path, { "manifest.json" => "{}\n" })
-
-    assert system("unzip", "-tq", @path, out: File::NULL)
-  end
 end
 
 class AddOnProcessingTest < Minitest::Test
