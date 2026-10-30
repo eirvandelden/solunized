@@ -122,6 +122,9 @@ def zip_end_record(count, central_size, central_offset)
 #: (String app_file, String app_name, Hash[String, untyped] app_config) -> void
 def validate_per_theme!(app_file, app_name, app_config)
 
+#: (String app_file, String app_name, Hash[String, untyped] app_config) -> void
+def validate_add_ons!(app_file, app_name, app_config)
+
 #: (String prefix, String slug, untyped settings) -> void
 def validate_add_on!(prefix, slug, settings)
 
@@ -152,9 +155,10 @@ module SignFirefox
   class SigningFailedError < RuntimeError; end
 
   class << self
-    # The directories directly under dist_dir that hold a manifest.json; raises when there are none.
-    #: (?String dist_dir) -> Array[String]
-    def add_on_dirs(dist_dir = "dist/firefox")
+    # The generated directory of each add-on in configuration.yml, so a directory left over from a removed
+    # add-on is never signed; raises when one is missing.
+    #: (?String dist_dir, ?slugs: Array[String]) -> Array[String]
+    def add_on_dirs(dist_dir = "dist/firefox", slugs: configured_slugs)
 
     # Raises MissingCredentialsError naming each missing variable before any command runs; else signs each directory.
     #: (Array[String] add_on_dirs, ?env: Hash[String, String], ?runner: ^(Hash[String, String], Array[String]) -> bool?, ?artifacts_dir: String) -> void
@@ -163,7 +167,7 @@ module SignFirefox
 end
 ```
 
-- `add_on_dirs` globs `<dist_dir>/*/manifest.json`. `dist/firefox/signed/` holds no `manifest.json`, so a later run never signs its own output.
+- `add_on_dirs` takes the slugs from `applications/firefox/configuration.yml` and returns `<dist_dir>/<slug>` for each. It raises `SigningFailedError` naming every slug whose `manifest.json` is missing. A removed add-on's directory and `dist/firefox/signed/` are never listed, so a later run never signs stale output or its own output.
 - Each command is `["npx", "--yes", "web-ext@10", "--no-config-discovery", "sign", "--channel", "unlisted", "--source-dir", dir, "--artifacts-dir", artifacts_dir]`. `--no-config-discovery` stops a home or local `web-ext` config from changing the signing inputs.
 - The runner gets the `env` hash and the command. The default runner calls `system(env, *command)`, so the checked hash is the one `npx` sees.
 - The credentials never go on the command line. `web-ext` reads `WEB_EXT_API_KEY` and `WEB_EXT_API_SECRET` from that environment.
