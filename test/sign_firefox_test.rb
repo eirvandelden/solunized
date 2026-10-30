@@ -1,6 +1,7 @@
 require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
+require "yaml"
 
 require_relative "../sign_firefox"
 
@@ -98,11 +99,18 @@ class SignFirefoxTest < Minitest::Test
     end
   end
 
-  def test_lists_each_unpacked_add_on
+  def test_lists_each_configured_add_on
     add_on("one")
     add_on("two")
 
-    assert_equal [ File.join(@dist, "one"), File.join(@dist, "two") ], SignFirefox.add_on_dirs(@dist)
+    assert_equal [ File.join(@dist, "one"), File.join(@dist, "two") ], SignFirefox.add_on_dirs(@dist, slugs: %w[one two])
+  end
+
+  def test_skips_a_directory_that_is_no_longer_configured
+    add_on("one")
+    add_on("removed")
+
+    assert_equal [ File.join(@dist, "one") ], SignFirefox.add_on_dirs(@dist, slugs: %w[one])
   end
 
   def test_skips_the_signed_directory
@@ -110,13 +118,29 @@ class SignFirefoxTest < Minitest::Test
     FileUtils.mkdir_p(File.join(@dist, "signed"))
     File.write(File.join(@dist, "signed", "one.xpi"), "x")
 
-    assert_equal [ File.join(@dist, "one") ], SignFirefox.add_on_dirs(@dist)
+    assert_equal [ File.join(@dist, "one") ], SignFirefox.add_on_dirs(@dist, slugs: %w[one])
+  end
+
+  def test_refuses_when_a_configured_add_on_was_not_generated
+    add_on("one")
+
+    error = assert_raises(SignFirefox::SigningFailedError) { SignFirefox.add_on_dirs(@dist, slugs: %w[one two]) }
+
+    assert_match(/two.*generate_themes\.rb/, error.message)
   end
 
   def test_refuses_when_no_add_on_was_generated
-    error = assert_raises(SignFirefox::SigningFailedError) { SignFirefox.add_on_dirs(@dist) }
+    error = assert_raises(SignFirefox::SigningFailedError) { SignFirefox.add_on_dirs(@dist, slugs: %w[one]) }
 
     assert_match(/generate_themes\.rb/, error.message)
+  end
+
+  def test_reads_the_slugs_from_the_firefox_configuration
+    slugs = YAML.safe_load_file(File.expand_path("../applications/firefox/configuration.yml", __dir__))
+      .fetch("firefox").fetch("add_ons").keys
+    slugs.each { |slug| add_on(slug) }
+
+    assert_equal slugs.sort.map { |slug| File.join(@dist, slug) }, SignFirefox.add_on_dirs(@dist)
   end
 
   private

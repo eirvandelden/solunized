@@ -2,7 +2,10 @@
 
 # Signs each unpacked Firefox add-on through web-ext on the unlisted channel; refuses without AMO credentials.
 # Only Etienne runs this: signing submits the add-on to Mozilla. generate_themes.rb never calls it.
+require "yaml"
+
 module SignFirefox
+  CONFIGURATION = File.expand_path("applications/firefox/configuration.yml", __dir__)
   CREDENTIALS = %w[WEB_EXT_API_KEY WEB_EXT_API_SECRET].freeze
   WEB_EXT = %w[npx --yes web-ext@10 --no-config-discovery].freeze
 
@@ -10,13 +13,15 @@ module SignFirefox
   class SigningFailedError < RuntimeError; end
 
   class << self
-    # The directories directly under dist_dir that hold a manifest.json; raises when there are none.
-    #: (?String dist_dir) -> Array[String]
-    def add_on_dirs(dist_dir = "dist/firefox")
-      dirs = Dir.glob(File.join(dist_dir, "*", "manifest.json")).sort.map { |manifest| File.dirname(manifest) }
-      return dirs unless dirs.empty?
+    # The generated directory of each add-on in configuration.yml, so a directory left over from a removed
+    # add-on is never signed; raises when one is missing.
+    #: (?String dist_dir, ?slugs: Array[String]) -> Array[String]
+    def add_on_dirs(dist_dir = "dist/firefox", slugs: configured_slugs)
+      dirs = slugs.sort.to_h { |slug| [ slug, File.join(dist_dir, slug) ] }
+      missing = dirs.reject { |_slug, dir| File.exist?(File.join(dir, "manifest.json")) }.keys
+      return dirs.values if missing.empty?
 
-      raise SigningFailedError, "No add-on found in #{dist_dir}; run ruby generate_themes.rb first"
+      raise SigningFailedError, "No add-on found for #{missing.join(', ')} in #{dist_dir}; run ruby generate_themes.rb first"
     end
 
     # Raises MissingCredentialsError naming each missing variable before any command runs; else signs each directory.
@@ -32,6 +37,10 @@ module SignFirefox
     end
 
     private
+
+    def configured_slugs
+      YAML.safe_load_file(CONFIGURATION).fetch("firefox").fetch("add_ons").keys
+    end
 
     def require_credentials!(env)
       missing = CREDENTIALS.select { |name| env[name].to_s.strip.empty? }
