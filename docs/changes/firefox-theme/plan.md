@@ -246,7 +246,7 @@ Out of scope: the listed channel and the public store; running the signing scrip
 - The README lists Firefox in the supported applications table → check: `grep -n "applications/firefox/configuration.yml" README.md`
 - Invariant: no deprecated key in either section, enforced by the single colour mapping → `test/generate_themes_test.rb` `FirefoxApplicationTest#test_has_no_deprecated_keys`
 - Invariant: no credential value in a signing command, enforced by passing them through the environment → `test/sign_firefox_test.rb` `SignFirefoxTest#test_keeps_the_credentials_out_of_the_command` (asserts the runner's `env` holds both credentials and no command argument equals one)
-- Invariant: the unpacked manifest and the zip hold the same bytes, enforced by `process_add_ons` → `test/generate_themes_test.rb` `ProcessErbAppTest#test_add_on_zip_holds_the_same_manifest_as_its_directory`
+- Invariant: the unpacked manifest and the zip hold the same bytes, enforced by `process_add_ons` → `test/generate_themes_test.rb` `AddOnProcessingTest#test_add_on_zip_holds_the_same_manifest_as_its_directory`
 
 Per changed file, the unit tests expected, named as behaviour:
 - `generate_themes.rb`: `write_zip writes each entry at the archive root with a matching CRC`, `write_zip gives the same bytes on every run`, `process_erb_app writes one directory and one zip per add-on`, `the add-on template sees its add-on settings and the shared version`, `process_all_apps rejects an add-on without an id`, `process_all_apps rejects add_ons without a version`, `process_all_apps generates the Firefox add-ons with every other application` (in `FullApplicationIntegrationTest`).
