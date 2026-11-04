@@ -143,6 +143,19 @@ class SignFirefoxTest < Minitest::Test
     assert_equal slugs.sort.map { |slug| File.join(@dist, slug) }, SignFirefox.add_on_dirs(@dist)
   end
 
+  def test_the_default_directories_do_not_depend_on_the_working_directory
+    repository = File.expand_path("..", __dir__)
+
+    assert_equal File.join(repository, "dist", "firefox"), SignFirefox::DIST_DIR
+    assert_equal File.join(repository, "dist", "firefox", "signed"), SignFirefox::ARTIFACTS_DIR
+  end
+
+  def test_signs_into_the_artifacts_directory_by_default
+    SignFirefox.sign([ add_on("one") ], env: CREDENTIALS, runner: @runner)
+
+    assert_equal SignFirefox::ARTIFACTS_DIR, @calls.first.last.last
+  end
+
   private
 
   def add_on(slug)

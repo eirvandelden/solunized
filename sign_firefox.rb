@@ -6,6 +6,8 @@ require "yaml"
 
 module SignFirefox
   CONFIGURATION = File.expand_path("applications/firefox/configuration.yml", __dir__)
+  DIST_DIR = File.expand_path("dist/firefox", __dir__)
+  ARTIFACTS_DIR = File.join(DIST_DIR, "signed")
   CREDENTIALS = %w[WEB_EXT_API_KEY WEB_EXT_API_SECRET].freeze
   WEB_EXT = %w[npx --yes web-ext@10 --no-config-discovery].freeze
 
@@ -16,17 +18,19 @@ module SignFirefox
     # The generated directory of each add-on in configuration.yml, so a directory left over from a removed
     # add-on is never signed; raises when one is missing.
     #: (?String dist_dir, ?slugs: Array[String]) -> Array[String]
-    def add_on_dirs(dist_dir = "dist/firefox", slugs: configured_slugs)
+    def add_on_dirs(dist_dir = DIST_DIR, slugs: configured_slugs)
       dirs = slugs.sort.to_h { |slug| [ slug, File.join(dist_dir, slug) ] }
       missing = dirs.reject { |_slug, dir| File.exist?(File.join(dir, "manifest.json")) }.keys
       return dirs.values if missing.empty?
 
-      raise SigningFailedError, "No add-on found for #{missing.join(', ')} in #{dist_dir}; run ruby generate_themes.rb first"
+      raise SigningFailedError,
+            "No add-on found for #{missing.join(', ')} in #{dist_dir}; run ruby generate_themes.rb first"
     end
 
     # Raises MissingCredentialsError naming each missing variable before any command runs; else signs each directory.
     #: (Array[String] add_on_dirs, ?env: Hash[String, String], ?runner: ^(Hash[String, String], Array[String]) -> bool?, ?artifacts_dir: String) -> void
-    def sign(add_on_dirs, env: ENV.to_h, runner: ->(env, command) { system(env, *command) }, artifacts_dir: "dist/firefox/signed")
+    def sign(add_on_dirs, env: ENV.to_h, runner: ->(env, command) { system(env, *command) },
+             artifacts_dir: ARTIFACTS_DIR)
       require_credentials!(env)
 
       add_on_dirs.each do |dir|
