@@ -92,9 +92,11 @@ end
 def validate_add_ons!(app_file, app_name, app_config)
   prefix = "Invalid config in #{app_file}: application '#{app_name}'"
   add_ons = app_config["add_ons"]
-  raise RuntimeError, "#{prefix} requires add_ons to be a non-empty mapping" unless add_ons.is_a?(Hash) && !add_ons.empty?
+  raise RuntimeError, "#{prefix} requires add_ons to be a non-empty mapping" unless non_empty_hash?(add_ons)
 
-  %w[filename version].each { |key| raise RuntimeError, "#{prefix} requires #{key}" unless present_string?(app_config[key]) }
+  %w[filename version].each do |key|
+    raise RuntimeError, "#{prefix} requires #{key}" unless present_string?(app_config[key])
+  end
   add_ons.each { |slug, settings| validate_add_on!(prefix, slug, settings) }
 end
 
@@ -105,6 +107,11 @@ def validate_add_on!(prefix, slug, settings)
 
     raise RuntimeError, "#{prefix} add-on '#{slug}' requires #{key}"
   end
+end
+
+#: (untyped value) -> bool
+def non_empty_hash?(value)
+  value.is_a?(Hash) && !value.empty?
 end
 
 #: (untyped value) -> bool
