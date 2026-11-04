@@ -622,6 +622,75 @@ class MvpaCssApplicationTest < Minitest::Test
 end
 
 # ---------------------------------------------------------------------------
+# herdr application
+# ---------------------------------------------------------------------------
+
+class HerdrApplicationTest < Minitest::Test
+  CARD_PANEL_TOKENS = {
+    "accent" => "br_orange",
+    "active_row_bg" => "bg_0",
+    "panel_bg" => "bg_1",
+    "sidebar_bg" => "bg_1",
+    "surface_dim" => "bg_1",
+    "overlay0" => "bg_2"
+  }.freeze
+
+  def setup
+    @tmpdir = Dir.mktmpdir
+    @workspace_root = File.expand_path("..", __dir__)
+    @themes = YAML.load_file(File.join(@workspace_root, "themes.yml"))["themes"]
+
+    config = YAML.load_file(File.join(@workspace_root, "applications/herdr/configuration.yml"))["herdr"]
+    config["output_dir"] = @tmpdir
+    erb_file = File.join(@workspace_root, "applications/herdr/template.toml.erb")
+
+    process_erb_app(@themes, config, erb_file)
+  end
+
+  def teardown
+    FileUtils.rm_rf(@tmpdir)
+  end
+
+  def test_light_variant_sets_the_card_panel_tokens
+    tokens = tokens_for("light")
+
+    assert_equal "#a44910", tokens["accent"]
+    assert_equal "#fffbf1", tokens["active_row_bg"]
+    %w[panel_bg sidebar_bg surface_dim].each { |token| assert_equal "#eeeae0", tokens[token], token }
+  end
+
+  def test_dark_variant_sets_the_card_panel_tokens
+    tokens = tokens_for("dark")
+
+    assert_equal "#fa9253", tokens["accent"]
+    %w[panel_bg sidebar_bg surface_dim].each { |token| assert_equal "#0d3b4a", tokens[token], token }
+  end
+
+  def test_every_variant_maps_the_card_panel_tokens_to_the_same_palette_names
+    @themes.each do |variant, theme_data|
+      tokens = tokens_for(variant)
+      CARD_PANEL_TOKENS.each do |token, colour|
+        assert_equal theme_data["colors"][colour], tokens[token], "#{variant} #{token}"
+      end
+    end
+  end
+
+  def test_every_variant_keeps_overlay0_on_bg_2
+    @themes.each do |variant, theme_data|
+      assert_equal theme_data["colors"]["bg_2"], tokens_for(variant)["overlay0"], variant
+    end
+  end
+
+  private
+
+  def tokens_for(variant)
+    File.read(File.join(@tmpdir, "solunized-#{variant}.toml"), encoding: "UTF-8")
+      .scan(/^(\w+) = "([^"]+)"$/)
+      .to_h
+  end
+end
+
+# ---------------------------------------------------------------------------
 # slack application
 # ---------------------------------------------------------------------------
 
