@@ -631,8 +631,7 @@ class HerdrApplicationTest < Minitest::Test
     "active_row_bg" => "bg_0",
     "panel_bg" => "bg_1",
     "sidebar_bg" => "bg_1",
-    "surface_dim" => "bg_1",
-    "overlay0" => "bg_2"
+    "surface_dim" => "bg_1"
   }.freeze
 
   def setup
