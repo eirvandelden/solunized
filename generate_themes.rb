@@ -7,6 +7,10 @@ require "open3"
 require "json"
 require "zlib"
 
+# @rbs!
+#   type any_hash = Hash[String, untyped]
+#   type str_hash = Hash[String, String]
+
 HEX_COLOR_PATTERN = /\A#[0-9A-Fa-f]{6}\z/
 
 class PlutilUnavailableError < RuntimeError; end
@@ -241,7 +245,7 @@ rescue Errno::ENOENT
 end
 
 class ErbContext
-  #: (Hash[String, untyped] themes, ?String? variant, ?Hash[String, untyped]? theme_data, ?plutil_command: String, ?plutil_env: Hash[String, String], ?add_on: Hash[String, String]?) -> void
+  #: (any_hash, ?String?, ?any_hash?, ?plutil_command: String, ?plutil_env: str_hash, ?add_on: str_hash?) -> void
   def initialize(themes, variant = nil, theme_data = nil, plutil_command: "plutil", plutil_env: {}, add_on: nil)
     @themes     = themes
     @variant    = variant
@@ -305,7 +309,7 @@ class ErbContext
   end
 end
 
-#: (Hash[String, untyped] themes, Hash[String, untyped] app_config, String erb_file, ?plutil_command: String, ?plutil_env: Hash[String, String]) -> void
+#: (any_hash, any_hash, String, ?plutil_command: String, ?plutil_env: str_hash) -> void
 def process_erb_app(themes, app_config, erb_file, plutil_command: "plutil", plutil_env: {})
   output_dir = app_config["output_dir"]
   template   = ERB.new(File.read(erb_file), trim_mode: "-")

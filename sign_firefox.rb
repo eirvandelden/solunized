@@ -5,6 +5,8 @@
 require "yaml"
 
 module SignFirefox
+  # @rbs! type str_hash = Hash[String, String]
+
   CONFIGURATION = File.expand_path("applications/firefox/configuration.yml", __dir__)
   DIST_DIR = File.expand_path("dist/firefox", __dir__)
   ARTIFACTS_DIR = File.join(DIST_DIR, "signed")
@@ -28,7 +30,7 @@ module SignFirefox
     end
 
     # Raises MissingCredentialsError naming each missing variable before any command runs; else signs each directory.
-    #: (Array[String] add_on_dirs, ?env: Hash[String, String], ?runner: ^(Hash[String, String], Array[String]) -> bool?, ?artifacts_dir: String) -> void
+    #: (Array[String], ?env: str_hash, ?runner: ^(str_hash, Array[String]) -> bool?, ?artifacts_dir: String) -> void
     def sign(add_on_dirs, env: ENV.to_h, runner: ->(env, command) { system(env, *command) },
              artifacts_dir: ARTIFACTS_DIR)
       require_credentials!(env)

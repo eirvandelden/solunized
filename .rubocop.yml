@@ -1,0 +1,5 @@
+---
+# The rules shared by every personal Ruby project
+inherit_gem:
+  rubocop-eirvandelden:
+    - config/default.yml

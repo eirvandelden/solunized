@@ -131,7 +131,7 @@ class GlowApplicationTest < Minitest::Test
   def test_chroma_comments_are_italic_without_colour
     comment = @style.fetch("code_block").fetch("chroma").fetch("comment")
 
-    assert_equal true, comment.fetch("italic")
+    assert_same true, comment.fetch("italic")
     refute comment.key?("color")
   end
 
@@ -170,25 +170,6 @@ class GlowApplicationTest < Minitest::Test
     process_erb_app(@themes, config, File.join(@workspace_root, "applications/#{app}/#{template}"))
   end
 
-  def slot(name)
-    GHOSTTY_SLOTS.fetch(name).to_s
-  end
-
-  def assert_ghostty_palette_matches_slots
-    @themes.each_key do |variant|
-      palette = ghostty_palette(variant)
-      GHOSTTY_SLOTS.each do |name, index|
-        assert_equal @themes[variant]["colors"][name], palette[index], "#{variant} #{name} slot #{index}"
-      end
-    end
-  end
-
-  def ghostty_palette(variant)
-    File.read(File.join(@ghostty_dir, "solunized-#{variant}"), encoding: "UTF-8")
-      .scan(/^palette = (\d+)=(#\h+)$/)
-      .to_h { |index, hex| [ index.to_i, hex ] }
-  end
-
   def colours_in(node)
     case node
     when Hash then node.flat_map { |key, value| key.end_with?("color") ? [ value ] : colours_in(value) }
@@ -203,6 +184,26 @@ class GlowApplicationTest < Minitest::Test
     when Array then node.flat_map { |value| key_names(value) }
     else []
     end
+  end
+
+  def slot(name)
+    GHOSTTY_SLOTS.fetch(name).to_s
+  end
+
+  def assert_ghostty_palette_matches_slots
+    @themes.each_key do |variant|
+      palette = ghostty_palette(variant)
+
+      GHOSTTY_SLOTS.each do |name, index|
+        assert_equal @themes[variant]["colors"][name], palette[index], "#{variant} #{name} slot #{index}"
+      end
+    end
+  end
+
+  def ghostty_palette(variant)
+    File.read(File.join(@ghostty_dir, "solunized-#{variant}"), encoding: "UTF-8")
+      .scan(/^palette = (\d+)=(#\h+)$/)
+      .to_h { |index, hex| [ index.to_i, hex ] }
   end
 end
 
@@ -231,9 +232,11 @@ class ProcessErbAppTest < Minitest::Test
     process_erb_app(THEMES, config, erb_file)
 
     dark_out = File.read(File.join(@tmpdir, "out", "theme-dark.txt"), encoding: "UTF-8")
+
     assert_equal "dark: #001122\n", dark_out
 
     light_out = File.read(File.join(@tmpdir, "out", "theme-light.txt"), encoding: "UTF-8")
+
     assert_equal "light: #ffffff\n", light_out
   end
 
@@ -249,6 +252,7 @@ class ProcessErbAppTest < Minitest::Test
     process_erb_app(THEMES, config, erb_file)
 
     content = File.read(File.join(@tmpdir, "out", "all.txt"), encoding: "UTF-8")
+
     assert_match(/dark/, content)
     assert_match(/light/, content)
   end
@@ -332,7 +336,7 @@ class ProcessAllAppsTest < Minitest::Test
 
     process_all_apps(themes_yml: themes_yml, apps_dir: apps_dir, plutil_command: "missing-plutil-command")
 
-    assert File.exist?(File.join(docs_output_dir, "colors.md"))
+    assert_path_exists File.join(docs_output_dir, "colors.md")
     assert_equal [], Dir.glob(File.join(terminal_output_dir, "*"))
   end
 
@@ -415,7 +419,7 @@ class ProcessAllAppsTest < Minitest::Test
 
     process_all_apps(themes_yml: themes_yml, apps_dir: apps_dir)
 
-    assert File.exist?(File.join(@tmpdir, "out", "docs", "colors.md"))
+    assert_path_exists File.join(@tmpdir, "out", "docs", "colors.md")
   end
 
   def test_finds_a_template_named_after_the_output_extension
@@ -514,12 +518,14 @@ end
 class HexToOklchTest < Minitest::Test
   def test_black_produces_zero_lightness_and_chroma
     l, c, _h = parse_oklch(hex_to_oklch("#000000"))
+
     assert_in_delta 0.0,   l, 0.01
     assert_in_delta 0.0,   c, 0.0001
   end
 
   def test_white_produces_full_lightness_and_zero_chroma
     l, c, _h = parse_oklch(hex_to_oklch("#ffffff"))
+
     assert_in_delta 100.0, l, 0.01
     assert_in_delta 0.0,   c, 0.0001
   end
@@ -609,6 +615,7 @@ class MvpaCssApplicationTest < Minitest::Test
   def test_values_match_themes_yml
     @themes.each do |variant, theme_data|
       css = @css_by_variant[variant]
+
       assert_includes css, "--color-bg-0: #{hex_to_oklch(theme_data['colors']['bg_0'])};"
       assert_includes css, "--color-red: #{hex_to_oklch(theme_data['colors']['red'])};"
       assert_includes css, "--color-br-violet: #{hex_to_oklch(theme_data['colors']['br_violet'])};"
@@ -673,6 +680,7 @@ class HerdrApplicationTest < Minitest::Test
   def test_every_variant_maps_the_card_panel_tokens_to_the_same_palette_names
     @themes.each do |variant, theme_data|
       tokens = tokens_for(variant)
+
       CARD_PANEL_TOKENS.each do |token, colour|
         assert_equal theme_data["colors"][colour], tokens[token], "#{variant} #{token}"
       end
@@ -721,16 +729,17 @@ class HerdrApplicationTest < Minitest::Test
 
   private
 
-  def herdr_file(variant)
-    File.read(File.join(@tmpdir, "solunized-#{variant}.toml"), encoding: "UTF-8")
-  end
-
   def tokens_for(variant)
     herdr_file(variant).scan(/^(\w+)\s*=\s*"([^"]+)"$/).to_h
   end
 
+  def herdr_file(variant)
+    File.read(File.join(@tmpdir, "solunized-#{variant}.toml"), encoding: "UTF-8")
+  end
+
   def token_names_for(variant)
     lines = herdr_file(variant).lines.drop(1).map(&:strip).reject(&:empty?)
+
     lines.each { |line| assert_match(/\A[\w-]+\s*=\s*"#[0-9a-f]{6}"\z/, line, variant) }
     lines.map { |line| line.split("=").first.strip }
   end
@@ -877,7 +886,8 @@ class AddOnProcessingTest < Minitest::Test
   end
 
   def test_writes_one_directory_and_one_zip_per_add_on
-    @config["add_ons"]["pair-two"] = { "name" => "Pair Two", "id" => "two@example.test", "theme" => "dark", "dark_theme" => "light" }
+    @config["add_ons"]["pair-two"] =
+      { "name" => "Pair Two", "id" => "two@example.test", "theme" => "dark", "dark_theme" => "light" }
 
     process_erb_app(THEMES, @config, @erb_file)
 
@@ -1083,6 +1093,7 @@ class FirefoxApplicationTest < Minitest::Test
   def test_has_no_deprecated_keys
     Dir.glob(File.join(@tmpdir, "out", "*", "manifest.json")).each do |path|
       manifest = JSON.parse(File.read(path, encoding: "UTF-8"))
+
       %w[theme dark_theme].each do |section|
         assert_empty DEPRECATED_KEYS & manifest.fetch(section).fetch("colors").keys
       end
@@ -1100,9 +1111,9 @@ class FirefoxApplicationTest < Minitest::Test
     white_black = manifest_for("solunized-white-black")
 
     assert_equal "Solunized Light & Dark", light_dark.fetch("name")
-    assert_equal "solunized-light-dark@eirvandelden.github.io", light_dark.dig("browser_specific_settings", "gecko", "id")
+    assert_equal "solunized-light-dark@eirvandelden.github.io", gecko_id(light_dark)
     assert_equal "Solunized White & Black", white_black.fetch("name")
-    assert_equal "solunized-white-black@eirvandelden.github.io", white_black.dig("browser_specific_settings", "gecko", "id")
+    assert_equal "solunized-white-black@eirvandelden.github.io", gecko_id(white_black)
     assert_match(/\A\d+\.\d+\.\d+\z/, light_dark.fetch("version"))
   end
 
@@ -1111,7 +1122,9 @@ class FirefoxApplicationTest < Minitest::Test
       entries = read_zip(File.join(@tmpdir, "out", "#{add_on}.zip"))
 
       assert_equal [ "manifest.json" ], entries.keys
-      assert_equal File.binread(File.join(@tmpdir, "out", add_on, "manifest.json")), entries.fetch("manifest.json").fetch(:data)
+      manifest_path = File.join(@tmpdir, "out", add_on, "manifest.json")
+
+      assert_equal File.binread(manifest_path), entries.fetch("manifest.json").fetch(:data)
     end
   end
 
@@ -1125,6 +1138,10 @@ class FirefoxApplicationTest < Minitest::Test
 
   def manifest_for(add_on)
     JSON.parse(File.read(File.join(@tmpdir, "out", add_on, "manifest.json"), encoding: "UTF-8"))
+  end
+
+  def gecko_id(manifest)
+    manifest.dig("browser_specific_settings", "gecko", "id")
   end
 end
 
@@ -1142,33 +1159,47 @@ class FullApplicationIntegrationTest < Minitest::Test
     FileUtils.rm_rf(@tmpdir)
   end
 
-  def test_generates_real_templates_and_validates_zed_json
-    themes_yml = File.join(@workspace_root, "themes.yml")
-    apps_dir = copy_apps_with_tmp_outputs
+  def test_writes_every_single_file_output
+    generate
 
-    process_all_apps(themes_yml: themes_yml, apps_dir: apps_dir, plutil_command: "missing-plutil-command")
+    assert_path_exists File.join(@tmpdir, "out", "docs", "colors.md")
+    assert_path_exists File.join(@tmpdir, "out", "docs", "slack.md")
+    assert_path_exists File.join(@tmpdir, "out", "nvim", "colors", "solunized.lua")
+    assert_path_exists File.join(@tmpdir, "out", "nvim", "lua", "lualine", "themes", "solunized.lua")
+    assert_path_exists File.join(@tmpdir, "out", "zed", "solunized-theme.json")
+    assert_path_exists File.join(@tmpdir, "out", "glow", "solunized.json")
+    assert File.file?(File.join(@tmpdir, "out", "firefox", "solunized-light-dark", "manifest.json"))
+    assert File.file?(File.join(@tmpdir, "out", "firefox", "solunized-white-black.zip"))
+  end
 
-    assert File.exist?(File.join(@tmpdir, "out", "docs", "colors.md"))
-    assert File.exist?(File.join(@tmpdir, "out", "docs", "slack.md"))
-    assert File.exist?(File.join(@tmpdir, "out", "nvim", "colors", "solunized.lua"))
-    assert File.exist?(File.join(@tmpdir, "out", "nvim", "lua", "lualine", "themes", "solunized.lua"))
-    assert File.exist?(File.join(@tmpdir, "out", "zed", "solunized-theme.json"))
-    assert File.exist?(File.join(@tmpdir, "out", "glow", "solunized.json"))
+  def test_writes_one_file_per_variant_and_skips_terminal_without_plutil
+    generate
+
     assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "ghostty", "*")).size
     assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "nova", "Themes", "*.css")).size
     assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "mvpa-css", "*.css")).size
     assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "herdr", "*.toml")).size
     assert_equal [], Dir.glob(File.join(@tmpdir, "out", "terminal", "*"))
-    assert File.file?(File.join(@tmpdir, "out", "firefox", "solunized-light-dark", "manifest.json"))
-    assert File.file?(File.join(@tmpdir, "out", "firefox", "solunized-white-black.zip"))
+  end
 
-    zed_json = File.read(File.join(@tmpdir, "out", "zed", "solunized-theme.json"), encoding: "UTF-8")
-    parsed = JSON.parse(zed_json)
+  def test_zed_output_is_valid_json_with_four_themes
+    generate
+
+    parsed = JSON.parse(File.read(File.join(@tmpdir, "out", "zed", "solunized-theme.json"), encoding: "UTF-8"))
+
     assert_equal "Solunized", parsed.fetch("name")
     assert_equal 4, parsed.fetch("themes").size
   end
 
   private
+
+  def generate
+    process_all_apps(
+      themes_yml: File.join(@workspace_root, "themes.yml"),
+      apps_dir: copy_apps_with_tmp_outputs,
+      plutil_command: "missing-plutil-command"
+    )
+  end
 
   def copy_apps_with_tmp_outputs
     src_apps = File.join(@workspace_root, "applications")
@@ -1233,6 +1264,7 @@ class HexToTermColorTest < Minitest::Test
     # #000000 → all zeros
     xml_black = roundtrip_to_xml("#000000")
     r, g, b   = extract_rgb(xml_black)
+
     assert_in_delta 0.0, r, 0.001
     assert_in_delta 0.0, g, 0.001
     assert_in_delta 0.0, b, 0.001
@@ -1240,6 +1272,7 @@ class HexToTermColorTest < Minitest::Test
     # #ffffff → all ones
     xml_white = roundtrip_to_xml("#ffffff")
     r, g, b   = extract_rgb(xml_white)
+
     assert_in_delta 1.0, r, 0.001
     assert_in_delta 1.0, g, 0.001
     assert_in_delta 1.0, b, 0.001
