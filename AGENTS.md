@@ -13,8 +13,8 @@ A personal colour theme: a higher-contrast variation of Solarized, inspired by S
 - `ruby generate_themes.rb` — regenerate all outputs from `themes.yml`.
 - `ruby preview_palette.rb [variant]` — print one variant's colours as text on its own background, for a readability check in the terminal (default `light`).
 - `ruby sign_firefox.rb` — signs the Firefox add-ons through `npx web-ext sign`, which submits them to Mozilla. Only the maintainer runs it, from their own shell with `WEB_EXT_API_KEY` and `WEB_EXT_API_SECRET` set; an agent never does.
-- `ruby test/generate_themes_test.rb`, `ruby test/preview_palette_test.rb` and `ruby test/sign_firefox_test.rb` — Minitest, run directly with the Ruby that rv selects from `.ruby-version`; there is no `Gemfile`, so no `bundle exec`.
-- No linter is configured in this repo (no `.rubocop.yml`).
+- `ruby test/generate_themes_test.rb`, `ruby test/preview_palette_test.rb` and `ruby test/sign_firefox_test.rb` — Minitest, run directly with the Ruby that rv selects from `.ruby-version`. They load no gem from the `Gemfile`, so no `bundle exec`.
+- `bin/rubocop` — lints the Ruby with `rubocop-eirvandelden`, the one gem in the `Gemfile`; install it with `bi`. CI's `lint` job runs `bin/rubocop -f github`.
 
 ## Gotchas
 
@@ -22,3 +22,5 @@ A personal colour theme: a higher-contrast variation of Solarized, inspired by S
 - CI sets `LANG`/`LC_ALL` to `C.UTF-8` before running Ruby — the theme files contain non-ASCII characters and the bare runner otherwise defaults to US-ASCII.
 - CI's second job regenerates everything and fails on any `git diff` — after editing `themes.yml` or any `applications/*/configuration.yml`/`template.*.erb`, re-run `ruby generate_themes.rb` and commit the resulting `docs/colors.md`/`docs/slack.md` changes before pushing.
 - The README's application table lists only the apps a person themes; `applications/docs` and `applications/mvpa-css` are real generation targets too, just not things anyone themes.
+- `.yamllint` allows the aligned colons in `themes.yml`; without it the global yamllint hook rejects every `themes.yml` commit.
+- `lefthook-local.yml` runs `ruby generate_themes.rb` after a pull or `pull --rebase` that changes `themes.yml` or `applications/**`. The repo tracks it although the global gitignore lists its name; add it with `git add -f`.
