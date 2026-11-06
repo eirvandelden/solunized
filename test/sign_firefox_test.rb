@@ -104,7 +104,9 @@ class SignFirefoxTest < Minitest::Test
     add_on("one")
     add_on("two")
 
-    assert_equal [ File.join(@dist, "one"), File.join(@dist, "two") ], SignFirefox.add_on_dirs(@dist, slugs: %w[one two])
+    dirs = SignFirefox.add_on_dirs(@dist, slugs: %w[one two])
+
+    assert_equal [ File.join(@dist, "one"), File.join(@dist, "two") ], dirs
   end
 
   def test_skips_a_directory_that_is_no_longer_configured

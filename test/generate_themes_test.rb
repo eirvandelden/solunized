@@ -886,7 +886,8 @@ class AddOnProcessingTest < Minitest::Test
   end
 
   def test_writes_one_directory_and_one_zip_per_add_on
-    @config["add_ons"]["pair-two"] = { "name" => "Pair Two", "id" => "two@example.test", "theme" => "dark", "dark_theme" => "light" }
+    @config["add_ons"]["pair-two"] =
+      { "name" => "Pair Two", "id" => "two@example.test", "theme" => "dark", "dark_theme" => "light" }
 
     process_erb_app(THEMES, @config, @erb_file)
 
@@ -1110,9 +1111,9 @@ class FirefoxApplicationTest < Minitest::Test
     white_black = manifest_for("solunized-white-black")
 
     assert_equal "Solunized Light & Dark", light_dark.fetch("name")
-    assert_equal "solunized-light-dark@eirvandelden.github.io", light_dark.dig("browser_specific_settings", "gecko", "id")
+    assert_equal "solunized-light-dark@eirvandelden.github.io", gecko_id(light_dark)
     assert_equal "Solunized White & Black", white_black.fetch("name")
-    assert_equal "solunized-white-black@eirvandelden.github.io", white_black.dig("browser_specific_settings", "gecko", "id")
+    assert_equal "solunized-white-black@eirvandelden.github.io", gecko_id(white_black)
     assert_match(/\A\d+\.\d+\.\d+\z/, light_dark.fetch("version"))
   end
 
@@ -1121,7 +1122,9 @@ class FirefoxApplicationTest < Minitest::Test
       entries = read_zip(File.join(@tmpdir, "out", "#{add_on}.zip"))
 
       assert_equal [ "manifest.json" ], entries.keys
-      assert_equal File.binread(File.join(@tmpdir, "out", add_on, "manifest.json")), entries.fetch("manifest.json").fetch(:data)
+      manifest_path = File.join(@tmpdir, "out", add_on, "manifest.json")
+
+      assert_equal File.binread(manifest_path), entries.fetch("manifest.json").fetch(:data)
     end
   end
 
@@ -1135,6 +1138,10 @@ class FirefoxApplicationTest < Minitest::Test
 
   def manifest_for(add_on)
     JSON.parse(File.read(File.join(@tmpdir, "out", add_on, "manifest.json"), encoding: "UTF-8"))
+  end
+
+  def gecko_id(manifest)
+    manifest.dig("browser_specific_settings", "gecko", "id")
   end
 end
 
