@@ -1,0 +1,16 @@
+firefox:
+  output_dir: dist/firefox
+  filename: manifest.json
+  # AMO rejects a repeated version: bump it before each signing.
+  version: "1.0.0"
+  add_ons:
+    solunized-light-dark:
+      name: Solunized Light & Dark
+      id: solunized-light-dark@eirvandelden.github.io
+      theme: light
+      dark_theme: dark
+    solunized-white-black:
+      name: Solunized White & Black
+      id: solunized-white-black@eirvandelden.github.io
+      theme: white
+      dark_theme: black

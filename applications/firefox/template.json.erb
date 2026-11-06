@@ -1,0 +1,57 @@
+<%
+  # One mapping from the MDN theme.colors keys to palette names, used for both sections.
+  mapping = {
+    "frame" => "bg_0",
+    "frame_inactive" => "bg_0",
+    "toolbar_field" => "bg_0",
+    "toolbar_field_focus" => "bg_0",
+    "ntp_background" => "bg_0",
+    "toolbar" => "bg_1",
+    "tab_selected" => "bg_1",
+    "popup" => "bg_1",
+    "sidebar" => "bg_1",
+    "ntp_card_background" => "bg_1",
+    "toolbar_top_separator" => "bg_2",
+    "toolbar_bottom_separator" => "bg_2",
+    "toolbar_vertical_separator" => "bg_2",
+    "toolbar_field_border" => "bg_2",
+    "button_background_hover" => "bg_2",
+    "button_background_active" => "bg_2",
+    "popup_border" => "bg_2",
+    "popup_highlight" => "bg_2",
+    "sidebar_border" => "bg_2",
+    "tab_background_text" => "fg_0",
+    "icons" => "fg_0",
+    "tab_text" => "fg_1",
+    "toolbar_text" => "fg_1",
+    "bookmark_text" => "fg_1",
+    "toolbar_field_text" => "fg_1",
+    "toolbar_field_text_focus" => "fg_1",
+    "popup_text" => "fg_1",
+    "popup_highlight_text" => "fg_1",
+    "sidebar_text" => "fg_1",
+    "ntp_text" => "fg_1",
+    "tab_line" => "blue",
+    "tab_loading" => "blue",
+    "toolbar_field_border_focus" => "blue",
+    "toolbar_field_highlight" => "blue",
+    "icons_attention" => "blue",
+    "sidebar_highlight" => "blue",
+    "toolbar_field_highlight_text" => "bg_0",
+    "sidebar_highlight_text" => "bg_0"
+  }
+  colors = ->(variant) { { "colors" => mapping.transform_values { |name| c(variant, name) } } }
+-%>
+<%= JSON.pretty_generate(
+  "manifest_version" => 2,
+  "name" => add_on["name"],
+  "version" => add_on["version"],
+  "browser_specific_settings" => {
+    "gecko" => {
+      "id" => add_on["id"],
+      "data_collection_permissions" => { "required" => [ "none" ] }
+    }
+  },
+  "theme" => colors.call(add_on["theme"]),
+  "dark_theme" => colors.call(add_on["dark_theme"])
+) %>

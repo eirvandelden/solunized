@@ -4,6 +4,8 @@ require "erb"
 require "base64"
 require "tempfile"
 require "open3"
+require "json"
+require "zlib"
 
 HEX_COLOR_PATTERN = /\A#[0-9A-Fa-f]{6}\z/
 
@@ -13,6 +15,7 @@ class PlutilUnavailableError < RuntimeError; end
 # Core helpers
 # ---------------------------------------------------------------------------
 
+#: (String path) -> Hash[String, untyped]
 def load_yaml_hash(path)
   data = YAML.safe_load(File.read(path), permitted_classes: [], aliases: false)
   return data if data.is_a?(Hash)
@@ -22,6 +25,7 @@ rescue Psych::Exception => e
   raise RuntimeError, "Invalid YAML in #{path}: #{e.message}"
 end
 
+#: (String themes_yml, untyped themes) -> void
 def validate_themes!(themes_yml, themes)
   unless themes.is_a?(Hash) && !themes.empty?
     raise RuntimeError, "#{themes_yml}: top-level 'themes' must be a non-empty mapping"
@@ -39,6 +43,7 @@ def validate_themes!(themes_yml, themes)
   end
 end
 
+#: (String app_file, untyped raw_config) -> [String, Hash[String, untyped], String]
 def validate_app_config!(app_file, raw_config)
   unless raw_config.is_a?(Hash) && raw_config.size == 1
     raise RuntimeError, "Invalid config in #{app_file}: expected exactly one top-level application key"
@@ -55,13 +60,10 @@ def validate_app_config!(app_file, raw_config)
     raise RuntimeError, "Invalid config in #{app_file}: application '#{app_name}' requires output_dir"
   end
 
-  per_theme = app_config["per_theme"]
-  unless per_theme == true || per_theme == false
-    raise RuntimeError, "Invalid config in #{app_file}: application '#{app_name}' requires per_theme: true|false"
-  end
-
-  if !per_theme && (!app_config["filename"].is_a?(String) || app_config["filename"].strip.empty?)
-    raise RuntimeError, "Invalid config in #{app_file}: application '#{app_name}' requires filename"
+  if app_config.key?("add_ons")
+    validate_add_ons!(app_file, app_name, app_config)
+  else
+    validate_per_theme!(app_file, app_name, app_config)
   end
 
   erb_file = erb_template_for(app_file)
@@ -72,8 +74,54 @@ def validate_app_config!(app_file, raw_config)
   [ app_name, app_config, erb_file ]
 end
 
+#: (String app_file, String app_name, Hash[String, untyped] app_config) -> void
+def validate_per_theme!(app_file, app_name, app_config)
+  per_theme = app_config["per_theme"]
+  unless per_theme == true || per_theme == false
+    raise RuntimeError, "Invalid config in #{app_file}: application '#{app_name}' requires per_theme: true|false"
+  end
+
+  return if per_theme || present_string?(app_config["filename"])
+
+  raise RuntimeError, "Invalid config in #{app_file}: application '#{app_name}' requires filename"
+end
+
+# An add_ons application writes one add-on directory and zip per entry, so it needs a
+# manifest filename and a version, and each entry needs a name, id and two variants.
+#: (String app_file, String app_name, Hash[String, untyped] app_config) -> void
+def validate_add_ons!(app_file, app_name, app_config)
+  prefix = "Invalid config in #{app_file}: application '#{app_name}'"
+  add_ons = app_config["add_ons"]
+  raise RuntimeError, "#{prefix} requires add_ons to be a non-empty mapping" unless non_empty_hash?(add_ons)
+
+  %w[filename version].each do |key|
+    raise RuntimeError, "#{prefix} requires #{key}" unless present_string?(app_config[key])
+  end
+  add_ons.each { |slug, settings| validate_add_on!(prefix, slug, settings) }
+end
+
+#: (String prefix, String slug, untyped settings) -> void
+def validate_add_on!(prefix, slug, settings)
+  %w[name id theme dark_theme].each do |key|
+    next if settings.is_a?(Hash) && present_string?(settings[key])
+
+    raise RuntimeError, "#{prefix} add-on '#{slug}' requires #{key}"
+  end
+end
+
+#: (untyped value) -> bool
+def non_empty_hash?(value)
+  value.is_a?(Hash) && !value.empty?
+end
+
+#: (untyped value) -> bool
+def present_string?(value)
+  value.is_a?(String) && !value.strip.empty?
+end
+
 # Templates are named "template.<ext>.erb", naming the output format (e.g. "template.md.erb").
 # Exactly one must live next to the app's configuration.yml.
+#: (String app_file) -> String?
 def erb_template_for(app_file)
   matches = Dir.glob(File.join(File.dirname(app_file), "template.*.erb")).sort
   return nil if matches.empty?
@@ -87,6 +135,7 @@ end
 # ---------------------------------------------------------------------------
 
 # Converts a hex color to a CSS oklch() string.
+#: (String hex) -> String
 def hex_to_oklch(hex)
   unless hex.is_a?(String) && hex.match?(HEX_COLOR_PATTERN)
     raise ArgumentError, "Expected a hex color in #RRGGBB format, got: #{hex.inspect}"
@@ -123,6 +172,7 @@ end
 
 # Converts a hex color to a Base64-encoded binary NSKeyedArchiver NSColor plist
 # for embedding in macOS .terminal XML plists.
+#: (String hex, ?plutil_command: String, ?env: Hash[String, String]) -> String
 def hex_to_term_color(hex, plutil_command: "plutil", env: {})
   unless hex.is_a?(String) && hex.match?(HEX_COLOR_PATTERN)
     raise ArgumentError, "Expected a hex color in #RRGGBB format, got: #{hex.inspect}"
@@ -174,6 +224,7 @@ def hex_to_term_color(hex, plutil_command: "plutil", env: {})
   Base64.strict_encode64(binary)
 end
 
+#: (String xml, plutil_command: String, ?env: Hash[String, String]) -> String
 def convert_plist_xml_to_binary(xml, plutil_command:, env: {})
   Tempfile.create([ "nscolor", ".plist" ]) do |f|
     f.write(xml)
@@ -190,17 +241,24 @@ rescue Errno::ENOENT
 end
 
 class ErbContext
-  def initialize(themes, variant = nil, theme_data = nil, plutil_command: "plutil", plutil_env: {})
+  #: (Hash[String, untyped] themes, ?String? variant, ?Hash[String, untyped]? theme_data, ?plutil_command: String, ?plutil_env: Hash[String, String], ?add_on: Hash[String, String]?) -> void
+  def initialize(themes, variant = nil, theme_data = nil, plutil_command: "plutil", plutil_env: {}, add_on: nil)
     @themes     = themes
     @variant    = variant
     @theme_data = theme_data
     @plutil_command = plutil_command
     @plutil_env = plutil_env
+    @add_on     = add_on
   end
 
-  attr_reader :themes, :variant, :theme_data
+  attr_reader :themes #: Hash[String, untyped]
+  attr_reader :variant #: String?
+  attr_reader :theme_data #: Hash[String, untyped]?
+  # add_on is the settings hash of the Firefox add-on being rendered, nil for every other template.
+  attr_reader :add_on #: Hash[String, String]?
 
   # Look up a colour hex value for a given variant and colour key.
+  #: (String | Symbol v, String | Symbol name) -> String
   def c(v, name)
     variant_key = v.to_s
     theme = @themes[variant_key]
@@ -220,6 +278,7 @@ class ErbContext
   end
 
   # Return the interface style ("dark" or "light") for a given variant.
+  #: (String | Symbol v) -> String
   def appearance(v)
     variant_key = v.to_s
     theme = @themes[variant_key]
@@ -235,19 +294,24 @@ class ErbContext
   # forwarding our stored plutil configuration. This lets ERB templates call
   # hex_to_term_color(...) without an explicit receiver while still using the
   # ErbContext's injectable plutil_command (needed for testing).
+  #: (String hex) -> String
   def hex_to_term_color(hex)
     super(hex, plutil_command: @plutil_command, env: @plutil_env)
   end
 
+  #: () -> Binding
   def get_binding
     binding
   end
 end
 
+#: (Hash[String, untyped] themes, Hash[String, untyped] app_config, String erb_file, ?plutil_command: String, ?plutil_env: Hash[String, String]) -> void
 def process_erb_app(themes, app_config, erb_file, plutil_command: "plutil", plutil_env: {})
   output_dir = app_config["output_dir"]
   template   = ERB.new(File.read(erb_file), trim_mode: "-")
   FileUtils.mkdir_p(output_dir)
+
+  return process_add_ons(themes, app_config, template) if app_config.key?("add_ons")
 
   if app_config["per_theme"]
     themes.each do |variant, theme_data|
@@ -271,10 +335,81 @@ def process_erb_app(themes, app_config, erb_file, plutil_command: "plutil", plut
   end
 end
 
+# Writes <output_dir>/<add-on>/<filename> and <output_dir>/<add-on>.zip for each add-on.
+# Both come from one rendered string, so the directory and the zip never drift apart.
+#: (Hash[String, untyped] themes, Hash[String, untyped] app_config, ERB template) -> void
+def process_add_ons(themes, app_config, template)
+  app_config["add_ons"].each do |slug, settings|
+    add_on   = settings.merge("version" => app_config["version"], "slug" => slug)
+    manifest = template.result(ErbContext.new(themes, add_on: add_on).get_binding)
+    write_add_on(app_config["output_dir"], slug, app_config["filename"], manifest)
+  end
+end
+
+# Writes one add-on's directory and zip from the same manifest string.
+#: (String output_dir, String slug, String filename, String manifest) -> void
+def write_add_on(output_dir, slug, filename, manifest)
+  add_on_dir = File.join(output_dir, slug)
+  FileUtils.mkdir_p(add_on_dir)
+  File.write(File.join(add_on_dir, filename), manifest)
+  puts "Generated #{File.join(add_on_dir, filename)}"
+  puts "Generated #{write_zip(File.join(output_dir, "#{slug}.zip"), { filename => manifest })}"
+end
+
+# Writes a stored (uncompressed) zip with a fixed 1980-01-01 timestamp, so a re-run gives the same bytes.
+# entries maps an archive path to its content.
+#: (String path, Hash[String, String] entries) -> String
+def write_zip(path, entries)
+  File.binwrite(path, zip_archive(entries))
+  path
+end
+
+#: (Hash[String, String] entries) -> String
+def zip_archive(entries)
+  offset = 0
+  parts = entries.map do |name, content|
+    local, central = zip_entry(name.b, content.b, offset)
+    offset += local.bytesize
+    [ local, central ]
+  end
+  locals  = parts.map(&:first).join.b
+  central = parts.map(&:last).join.b
+  locals + central + zip_end_record(entries.size, central.bytesize, locals.bytesize)
+end
+
+# The local record (header, name, data) and the central directory record of one entry.
+#: (String name, String data, Integer offset) -> [String, String]
+def zip_entry(name, data, offset)
+  crc = Zlib.crc32(data)
+  [ zip_local_header(name, data, crc) + name + data, zip_central_header(name, data, crc, offset) + name ]
+end
+
+ZIP_VERSION = 20
+ZIP_UTF8_FLAG = 0x0800
+ZIP_DOS_DATE = 0x21 # 1980-01-01
+
+#: (String name, String data, Integer crc) -> String
+def zip_local_header(name, data, crc)
+  [ 0x04034b50, ZIP_VERSION, ZIP_UTF8_FLAG, 0, 0, ZIP_DOS_DATE, crc, data.bytesize, data.bytesize, name.bytesize, 0 ]
+    .pack("VvvvvvVVVvv")
+end
+
+#: (String name, String data, Integer crc, Integer local_offset) -> String
+def zip_central_header(name, data, crc, local_offset)
+  [ 0x02014b50, ZIP_VERSION, ZIP_VERSION, ZIP_UTF8_FLAG, 0, 0, ZIP_DOS_DATE, crc, data.bytesize, data.bytesize,
+    name.bytesize, 0, 0, 0, 0, 0, local_offset ].pack("VvvvvvvVVVvvvvvVV")
+end
+
+#: (Integer count, Integer central_size, Integer central_offset) -> String
+def zip_end_record(count, central_size, central_offset)
+  [ 0x06054b50, 0, 0, count, count, central_size, central_offset, 0 ].pack("VvvvvVVv")
+end
+
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
+#: (themes_yml: String, apps_dir: String, ?plutil_command: String, ?plutil_env: Hash[String, String]) -> void
 def process_all_apps(themes_yml:, apps_dir:, plutil_command: "plutil", plutil_env: {})
   themes = load_yaml_hash(themes_yml).fetch("themes") do
     raise RuntimeError, "#{themes_yml}: missing top-level 'themes' key"
