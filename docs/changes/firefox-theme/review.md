@@ -92,3 +92,34 @@ Checks run: all three test files (88 runs, 1054 assertions, 0 failures, 0 skips)
 Round 4 fixes verified: `SignFirefox` defaults resolve from `__dir__`, and the validation lines are within the limit.
 
 Bugs, Security, Design: unchanged since round 4. Compliance: every criterion keeps its proof; `about:debugging` temporary load is still a manual check by Etienne.
+
+## Round 6 — 2026-11-06T13:44Z — 300502b
+
+- [ ] Nit: Hunks the task did not need. `c5baaaf` adds `#:` signatures to methods this branch does not otherwise change: `load_yaml_hash`, `validate_themes!`, `erb_template_for`, `hex_to_oklch`, `hex_to_term_color` (top-level and `ErbContext`), `convert_plist_xml_to_binary`, `ErbContext#c`, `#appearance`, `#get_binding`, `process_all_apps`, and the `themes`/`variant`/`theme_data` readers. Playbook rule 21 says every hunk must be required by the task and orthogonal improvements go to a separate branch. Round 1 asked for signatures on the new methods only — `generate_themes.rb:18` → dismissed: round 7 showed the lint needs the signatures on every method, so rule 2 outranks rule 21 here
+- [ ] Nit: `non_empty_hash?` is a public top-level method in the diff that `### Signatures` does not sign; the block signs its sibling `present_string?`. Rounds 4 and 5 said every public method was signed — `generate_themes.rb:113` → fixed (Sign non_empty_hash? in the plan)
+
+Checks run: `ruby test/generate_themes_test.rb` (68 runs, 0 failures, 0 skips), `ruby test/preview_palette_test.rb` (3 runs, 0 failures), `ruby test/sign_firefox_test.rb` (17 runs, 0 failures). `rubocop --force-exclusion` on the four changed Ruby files: no offenses. No existing test was weakened, skipped or deleted (the test files only add lines).
+
+Bugs: the code is the same as in round 5 (`3471abe`); only `300502b` came after it, and it removes the change folder. The zip records, the add-on validation and the signing guard read correctly. Nothing found.
+
+Security: credentials reach `npx` through the `env` hash only (`system(env, *command)`, no shell), never in a command argument or an error message. `generate_themes.rb` does not require `sign_firefox.rb` and starts no subprocess on the add-on path. Nothing found.
+
+Compliance: every acceptance criterion keeps the proof listed in round 2. The template holds the 38 current MDN `theme.colors` keys and neither deprecated key. `about:debugging` temporary load is still a manual check by Etienne.
+
+Design: no Law of Demeter chain, no query loop, no glossary (`GLOSSARY.md` does not exist yet).
+
+## Round 7 — 2026-11-06T13:54Z — 6e53371
+
+- [ ] Important: `generate_themes.rb` no longer lints clean. `c6ed078` removes every `#:` signature, so `rubocop --force-exclusion generate_themes.rb` reports 29 `Style/RbsInline/MissingTypeAnnotation` offenses; at `96e98d0` it reported none. Fifteen are on methods this branch adds or changes: `validate_per_theme!`, `validate_add_ons!`, `validate_add_on!`, `non_empty_hash?`, `present_string?`, `ErbContext#initialize`, `add_on`, `process_add_ons`, `write_add_on`, `write_zip`, `zip_archive`, `zip_entry`, `zip_local_header`, `zip_central_header`, `zip_end_record` — the signatures round 1's fix added, and that `### Signatures` still lists. The other 14 are on older methods that already fail on `origin/main`. Playbook rule 2 requires a clean lint on every touched file, and §7a forbids leaving a linter failure, so it outranks round 6's rule-21 nit: that nit was wrong and signing the older methods was required. Revert `c6ed078` — `generate_themes.rb:74` → fixed (Revert "Leave the signatures of the older generator methods alone")
+
+Checks run: `ruby test/generate_themes_test.rb` (68 runs, 0 failures, 0 skips), `ruby test/preview_palette_test.rb` (3 runs, 0 failures), `ruby test/sign_firefox_test.rb` (17 runs, 0 failures). `rubocop --force-exclusion` on the four changed Ruby files: 29 offenses, all in `generate_themes.rb` (above); `sign_firefox.rb` and both test files are clean. No existing test was weakened, skipped or deleted.
+
+Branch state: the local branch does not hold `300502b` (Remove change artifacts), which is on `origin/firefox-theme`; the two branches have diverged (local 2 commits, remote 1). A plain push is refused until the branch is rebased or reset onto the restored change folder.
+
+Bugs: `c6ed078` and `6e53371` change only comments and `plan.md`; the executable code is the same as in round 5. Nothing found.
+
+Security: unchanged since round 5. Credentials reach `npx` through the `env` hash only; `generate_themes.rb` starts no subprocess on the add-on path. Nothing found.
+
+Compliance: every acceptance criterion keeps the proof listed in round 2. `about:debugging` temporary load is still a manual check by Etienne. `### Signatures` now signs `non_empty_hash?` (round 6 fix verified), but the code no longer carries the signatures the block lists.
+
+Design: no Law of Demeter chain, no query loop, no glossary (`GLOSSARY.md` does not exist yet).
