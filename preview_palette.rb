@@ -10,10 +10,11 @@ module PreviewPalette
   SAMPLE = "agent · tab"
 
   class << self
+    #: (String, Hash[String, String]) -> String
     def render(variant, colors)
       background = colors.fetch("bg_0")
 
-      lines = ["", "  Solunized #{variant.capitalize} — colours on background #{background}", ""]
+      lines = [ "", "  Solunized #{variant.capitalize} — colours on background #{background}", "" ]
       lines << format("  %-9s %-34s %s", "", "normal", "bright")
       ACCENTS.each { |name| lines << accent_line(name, colors, background) }
       lines << ""
@@ -23,6 +24,7 @@ module PreviewPalette
       lines.join("\n")
     end
 
+    #: (String, String) -> Hash[String, String]
     def colors_for(variant, path)
       YAML.load_file(path).fetch("themes").fetch(variant).fetch("colors")
     end
