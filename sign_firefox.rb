@@ -4,9 +4,9 @@
 # Only Etienne runs this: signing submits the add-on to Mozilla. generate_themes.rb never calls it.
 require "yaml"
 
-# @rbs! type str_hash = Hash[String, String]
-
 module SignFirefox
+  # @rbs! type str_hash = Hash[String, String]
+
   CONFIGURATION = File.expand_path("applications/firefox/configuration.yml", __dir__)
   DIST_DIR = File.expand_path("dist/firefox", __dir__)
   ARTIFACTS_DIR = File.join(DIST_DIR, "signed")
