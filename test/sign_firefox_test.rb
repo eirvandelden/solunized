@@ -76,6 +76,7 @@ class SignFirefoxTest < Minitest::Test
     SignFirefox.sign([ add_on("one") ], env: CREDENTIALS, runner: @runner)
 
     env, command = @calls.first
+
     assert_equal "test-key", env.fetch("WEB_EXT_API_KEY")
     assert_equal "test-secret", env.fetch("WEB_EXT_API_SECRET")
     CREDENTIALS.each_value { |value| refute(command.any? { |argument| argument.include?(value) }) }
