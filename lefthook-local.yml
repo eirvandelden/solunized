@@ -1,0 +1,20 @@
+---
+# Regenerate the themes after a pull that changes themes.yml or applications/.
+# The global config sets `files` to the pulled change. Lefthook applies `glob`
+# only when `run` holds a file template, so `: {files}` passes it to a no-op.
+post-merge:
+  commands:
+    generate-themes:
+      glob:
+        - "themes.yml"
+        - "applications/**"
+      run: ": {files}; ruby generate_themes.rb"
+
+# post-rewrite also fires on `commit --amend`, where ORIG_HEAD can be stale.
+post-rewrite:
+  commands:
+    generate-themes:
+      glob:
+        - "themes.yml"
+        - "applications/**"
+      run: "[ {1} = rebase ] || exit 0; : {files}; ruby generate_themes.rb"
