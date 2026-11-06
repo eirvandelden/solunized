@@ -629,6 +629,7 @@ class HerdrApplicationTest < Minitest::Test
   CARD_PANEL_TOKENS = {
     "accent" => "br_orange",
     "active_row_bg" => "bg_0",
+    "overlay0" => "bg_2",
     "panel_bg" => "bg_1",
     "sidebar_bg" => "bg_1",
     "surface_dim" => "bg_1"
@@ -655,6 +656,7 @@ class HerdrApplicationTest < Minitest::Test
 
     assert_equal "#a44910", tokens["accent"]
     assert_equal "#fffbf1", tokens["active_row_bg"]
+    assert_equal "#d5d2c8", tokens["overlay0"]
     %w[panel_bg sidebar_bg surface_dim].each { |token| assert_equal "#eeeae0", tokens[token], token }
   end
 
@@ -662,6 +664,8 @@ class HerdrApplicationTest < Minitest::Test
     tokens = tokens_for("dark")
 
     assert_equal "#fa9253", tokens["accent"]
+    assert_equal "#012b38", tokens["active_row_bg"]
+    assert_equal "#2a5d6e", tokens["overlay0"]
     %w[panel_bg sidebar_bg surface_dim].each { |token| assert_equal "#0d3b4a", tokens[token], token }
   end
 
@@ -674,18 +678,60 @@ class HerdrApplicationTest < Minitest::Test
     end
   end
 
-  def test_every_variant_keeps_overlay0_on_bg_2
-    @themes.each do |variant, theme_data|
-      assert_equal theme_data["colors"]["bg_2"], tokens_for(variant)["overlay0"], variant
+  def test_light_file_is_the_light_mode_table
+    expected = <<~TOML
+      [theme.custom.light]
+      accent        = "#a44910"
+      active_row_bg = "#fffbf1"
+      overlay0      = "#d5d2c8"
+      panel_bg      = "#eeeae0"
+      sidebar_bg    = "#eeeae0"
+      surface_dim   = "#eeeae0"
+    TOML
+
+    assert_equal expected, herdr_file("light")
+  end
+
+  def test_dark_file_is_the_dark_mode_table
+    expected = <<~TOML
+      [theme.custom.dark]
+      accent        = "#fa9253"
+      active_row_bg = "#012b38"
+      overlay0      = "#2a5d6e"
+      panel_bg      = "#0d3b4a"
+      sidebar_bg    = "#0d3b4a"
+      surface_dim   = "#0d3b4a"
+    TOML
+
+    assert_equal expected, herdr_file("dark")
+  end
+
+  def test_black_and_white_keep_the_plain_table
+    %w[black white].each do |variant|
+      assert_equal "[theme.custom]", herdr_file(variant).lines.first.chomp, variant
+    end
+  end
+
+  def test_every_variant_holds_exactly_the_card_panel_tokens
+    @themes.each_key do |variant|
+      assert_equal CARD_PANEL_TOKENS.keys.sort, token_names_for(variant), variant
     end
   end
 
   private
 
-  def tokens_for(variant)
+  def herdr_file(variant)
     File.read(File.join(@tmpdir, "solunized-#{variant}.toml"), encoding: "UTF-8")
-      .scan(/^(\w+) = "([^"]+)"$/)
-      .to_h
+  end
+
+  def tokens_for(variant)
+    herdr_file(variant).scan(/^(\w+)\s*=\s*"([^"]+)"$/).to_h
+  end
+
+  def token_names_for(variant)
+    lines = herdr_file(variant).lines.drop(1).map(&:strip).reject(&:empty?)
+    lines.each { |line| assert_match(/\A[\w-]+\s*=\s*"#[0-9a-f]{6}"\z/, line, variant) }
+    lines.map { |line| line.split("=").first.strip }
   end
 end
 
