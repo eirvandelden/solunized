@@ -34,6 +34,7 @@ The maintainer's machines (git hooks), the `ci.yml` workflow, and the Ruby files
 - A `lint` job in `.github/workflows/ci.yml`, built like the one in `appkit`'s reusable workflow: `spinel-coop/setup-rv` with `install-gems: true`, a RuboCop cache step, then `bin/rubocop -f github`.
 - RuboCop fixes to the existing Ruby files so the new job passes, in separate commits per cop family.
 - A weekly `bundler` entry in `.github/dependabot.yml`, with the same 7-day cooldown as `github-actions`.
+- A repo `.yamllint` that allows the aligned colons in `themes.yml`, so the global yamllint hook accepts commits that touch it.
 - `AGENTS.md` updated: it now has a `Gemfile` and a linter.
 
 ## Out of scope
@@ -61,6 +62,7 @@ The maintainer's machines (git hooks), the `ci.yml` workflow, and the Ruby files
 - Fix all existing RuboCop offenses in own commits, no todo file — playbook rule 2 forbids linter disables.
 - Add `bundler` to Dependabot — the repo now has a `Gemfile`.
 - Follow the `journal_administration` setup — the maintainer asked for it. Its own `lefthook.yml` is not copied: the global defaults already cover it, per `new-repo-setup`.
+- Fix the yamllint failure on `themes.yml` in this PR — the maintainer said so after the implement stage found it blocks every `themes.yml` commit.
 - Autonomous delivery — the maintainer chose it; the maintainer accepts the intent and approves the merge.
 
 ## Open questions
