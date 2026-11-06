@@ -170,6 +170,22 @@ class GlowApplicationTest < Minitest::Test
     process_erb_app(@themes, config, File.join(@workspace_root, "applications/#{app}/#{template}"))
   end
 
+  def colours_in(node)
+    case node
+    when Hash then node.flat_map { |key, value| key.end_with?("color") ? [ value ] : colours_in(value) }
+    when Array then node.flat_map { |value| colours_in(value) }
+    else []
+    end
+  end
+
+  def key_names(node)
+    case node
+    when Hash then node.keys + node.values.flat_map { |value| key_names(value) }
+    when Array then node.flat_map { |value| key_names(value) }
+    else []
+    end
+  end
+
   def slot(name)
     GHOSTTY_SLOTS.fetch(name).to_s
   end
@@ -188,22 +204,6 @@ class GlowApplicationTest < Minitest::Test
     File.read(File.join(@ghostty_dir, "solunized-#{variant}"), encoding: "UTF-8")
       .scan(/^palette = (\d+)=(#\h+)$/)
       .to_h { |index, hex| [ index.to_i, hex ] }
-  end
-
-  def colours_in(node)
-    case node
-    when Hash then node.flat_map { |key, value| key.end_with?("color") ? [ value ] : colours_in(value) }
-    when Array then node.flat_map { |value| colours_in(value) }
-    else []
-    end
-  end
-
-  def key_names(node)
-    case node
-    when Hash then node.keys + node.values.flat_map { |value| key_names(value) }
-    when Array then node.flat_map { |value| key_names(value) }
-    else []
-    end
   end
 end
 
@@ -729,12 +729,12 @@ class HerdrApplicationTest < Minitest::Test
 
   private
 
-  def herdr_file(variant)
-    File.read(File.join(@tmpdir, "solunized-#{variant}.toml"), encoding: "UTF-8")
-  end
-
   def tokens_for(variant)
     herdr_file(variant).scan(/^(\w+)\s*=\s*"([^"]+)"$/).to_h
+  end
+
+  def herdr_file(variant)
+    File.read(File.join(@tmpdir, "solunized-#{variant}.toml"), encoding: "UTF-8")
   end
 
   def token_names_for(variant)
