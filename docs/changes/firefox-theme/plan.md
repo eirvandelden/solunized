@@ -130,6 +130,9 @@ def validate_add_on!(prefix, slug, settings)
 
 #: (untyped value) -> bool
 def present_string?(value)
+
+#: (untyped value) -> bool
+def non_empty_hash?(value)
 ```
 
 - `process_erb_app` gets one new first branch: `return process_add_ons(themes, app_config, template) if app_config.key?("add_ons")`.
