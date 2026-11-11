@@ -4,8 +4,36 @@
   ansi_names = %w[
     fg_0 red green yellow blue magenta cyan dim_0 fg_1 br_red br_green br_yellow br_blue br_magenta br_cyan fg_1
   ]
+  # Panel colors: every name herdr-app 0.1.15 documents, mapped to a palette name.
+  # herdr-app also paints terminals with background, foreground and selection, so they follow the terminal colors.
+  panel_names = {
+    "background" => terminal_names["background"],
+    "canvas" => "bg_1",
+    "chrome" => "bg_1",
+    "surface" => "bg_1",
+    "popover" => "bg_1",
+    "raised" => "bg_0",
+    "hover" => "bg_2",
+    "selected" => "bg_0",
+    "border" => "bg_2",
+    "input" => "dim_0",
+    "foreground" => terminal_names["foreground"],
+    "muted" => "fg_0",
+    "dim" => "dim_0",
+    "accent" => accent,
+    "accent_foreground" => "bg_0",
+    "solid" => "fg_1",
+    "solid_foreground" => "bg_0",
+    "selection" => terminal_names["selection"],
+    "working" => "br_yellow",
+    "blocked" => "br_red",
+    "done" => "br_green",
+    "idle" => "dim_0",
+    "unknown" => "dim_0"
+  }
 -%>
 <%= JSON.pretty_generate(
   **terminal_names.transform_values { |name| c(variant, name) },
-  "ansi" => ansi_names.map { |name| c(variant, name) }
+  "ansi" => ansi_names.map { |name| c(variant, name) },
+  "colors" => panel_names.transform_values { |name| c(variant, name) }
 ) %>
