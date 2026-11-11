@@ -91,18 +91,19 @@ def validate_per_theme!(app_file, app_name, app_config)
   raise RuntimeError, "Invalid config in #{app_file}: application '#{app_name}' requires filename"
 end
 
-# A target with accents writes one file per variant and accent.
+# A target with accents writes one file per variant and accent, so each file name must hold the accent;
+# a target without accents has no accent to put in its file name.
 #: (String prefix, Hash[String, untyped] app_config) -> void
 def validate_accents!(prefix, app_config)
-  return unless app_config.key?("accents")
+  names_accent = app_config["filename_pattern"].to_s.include?("%{accent}")
+  return if !app_config.key?("accents") && !names_accent
+  raise RuntimeError, "#{prefix} names %{accent} in filename_pattern without accents" unless app_config.key?("accents")
 
   accents = app_config["accents"]
   raise RuntimeError, "#{prefix} requires accents to be a non-empty list of palette names" unless accent_names?(accents)
   raise RuntimeError, "#{prefix} lists an accent more than once in accents" unless accents.uniq == accents
   raise RuntimeError, "#{prefix} requires per_theme: true with accents" unless app_config["per_theme"]
-  return if app_config["filename_pattern"].to_s.include?("%{accent}")
-
-  raise RuntimeError, "#{prefix} requires %{accent} in filename_pattern with accents"
+  raise RuntimeError, "#{prefix} requires %{accent} in filename_pattern with accents" unless names_accent
 end
 
 #: (untyped value) -> bool
