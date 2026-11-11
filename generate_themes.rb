@@ -332,17 +332,20 @@ def process_erb_app(themes, app_config, erb_file, plutil_command: "plutil", plut
   return process_add_ons(themes, app_config, template) if app_config.key?("add_ons")
 
   if app_config["per_theme"]
+    # Default pattern produces filenames like "dark", "light", etc.
+    # Override with e.g. "solunized-%{variant}" or "%{display_name}.terminal".
+    pattern = app_config["filename_pattern"] || "%{variant}"
     themes.each do |variant, theme_data|
-      ctx      = ErbContext.new(
-        themes, variant, theme_data, plutil_command: plutil_command, plutil_env: plutil_env
-      )
-      content  = template.result(ctx.get_binding)
-      # Default pattern produces filenames like "dark", "light", etc.
-      # Override with e.g. "solunized-%{variant}" or "%{display_name}.terminal".
-      pattern  = app_config["filename_pattern"] || "%{variant}"
-      filename = File.join(output_dir, ctx.filename(pattern))
-      File.write(filename, content)
-      puts "Generated #{filename}"
+      # A target with accents renders once per accent; any other target once per variant.
+      (app_config["accents"] || [ nil ]).each do |accent|
+        ctx      = ErbContext.new(
+          themes, variant, theme_data, plutil_command: plutil_command, plutil_env: plutil_env, accent: accent
+        )
+        content  = template.result(ctx.get_binding)
+        filename = File.join(output_dir, ctx.filename(pattern))
+        File.write(filename, content)
+        puts "Generated #{filename}"
+      end
     end
   else
     ctx      = ErbContext.new(themes, nil, nil, plutil_command: plutil_command, plutil_env: plutil_env)
