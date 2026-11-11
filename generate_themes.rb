@@ -98,6 +98,7 @@ def validate_accents!(prefix, app_config)
 
   accents = app_config["accents"]
   raise RuntimeError, "#{prefix} requires accents to be a non-empty list of palette names" unless accent_names?(accents)
+  raise RuntimeError, "#{prefix} lists an accent more than once in accents" unless accents.uniq == accents
 end
 
 #: (untyped value) -> bool
