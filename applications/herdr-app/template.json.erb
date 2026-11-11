@@ -32,8 +32,8 @@
     "unknown" => "dim_0"
   }
 -%>
-<%= JSON.pretty_generate(
+<%= JSON.pretty_generate({
   **terminal_names.transform_values { |name| c(variant, name) },
   "ansi" => ansi_names.map { |name| c(variant, name) },
   "colors" => panel_names.transform_values { |name| c(variant, name) }
-) %>
+}) %>
