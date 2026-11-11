@@ -113,11 +113,13 @@ end
 
 # An add_ons application writes one add-on directory and zip per entry, so it needs a
 # manifest filename and a version, and each entry needs a name, id and two variants.
+# It renders no accents.
 #: (String app_file, String app_name, Hash[String, untyped] app_config) -> void
 def validate_add_ons!(app_file, app_name, app_config)
   prefix = "Invalid config in #{app_file}: application '#{app_name}'"
   add_ons = app_config["add_ons"]
   raise RuntimeError, "#{prefix} requires add_ons to be a non-empty mapping" unless non_empty_hash?(add_ons)
+  raise RuntimeError, "#{prefix} cannot combine accents with add_ons" if app_config.key?("accents")
 
   %w[filename version].each do |key|
     raise RuntimeError, "#{prefix} requires #{key}" unless present_string?(app_config[key])
