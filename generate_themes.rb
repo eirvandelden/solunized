@@ -289,6 +289,12 @@ class ErbContext
     raise RuntimeError, "Unknown colour key '#{color_key}' for variant '#{variant_key}'"
   end
 
+  # The output file name: pattern formatted with this variant, its display name and the accent.
+  #: (String pattern) -> String
+  def filename(pattern)
+    format(pattern, variant: variant, display_name: theme_data["display_name"], accent: accent)
+  end
+
   # Return the interface style ("dark" or "light") for a given variant.
   #: (String | Symbol v) -> String
   def appearance(v)
@@ -334,7 +340,7 @@ def process_erb_app(themes, app_config, erb_file, plutil_command: "plutil", plut
       # Default pattern produces filenames like "dark", "light", etc.
       # Override with e.g. "solunized-%{variant}" or "%{display_name}.terminal".
       pattern  = app_config["filename_pattern"] || "%{variant}"
-      filename = File.join(output_dir, format(pattern, variant: variant, display_name: theme_data["display_name"]))
+      filename = File.join(output_dir, ctx.filename(pattern))
       File.write(filename, content)
       puts "Generated #{filename}"
     end
