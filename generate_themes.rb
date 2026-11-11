@@ -100,6 +100,9 @@ def validate_accents!(prefix, app_config)
   raise RuntimeError, "#{prefix} requires accents to be a non-empty list of palette names" unless accent_names?(accents)
   raise RuntimeError, "#{prefix} lists an accent more than once in accents" unless accents.uniq == accents
   raise RuntimeError, "#{prefix} requires per_theme: true with accents" unless app_config["per_theme"]
+  return if app_config["filename_pattern"].to_s.include?("%{accent}")
+
+  raise RuntimeError, "#{prefix} requires %{accent} in filename_pattern with accents"
 end
 
 #: (untyped value) -> bool
