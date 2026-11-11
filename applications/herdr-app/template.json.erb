@@ -1,0 +1,11 @@
+<%
+  # Terminal colors: applications/ghostty/template.config.erb's mapping, slot for slot.
+  terminal_names = { "background" => "bg_0", "foreground" => "fg_1", "selection" => "bg_1", "cursor" => "orange" }
+  ansi_names = %w[
+    fg_0 red green yellow blue magenta cyan dim_0 fg_1 br_red br_green br_yellow br_blue br_magenta br_cyan fg_1
+  ]
+-%>
+<%= JSON.pretty_generate(
+  **terminal_names.transform_values { |name| c(variant, name) },
+  "ansi" => ansi_names.map { |name| c(variant, name) }
+) %>

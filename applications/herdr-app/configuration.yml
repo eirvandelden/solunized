@@ -1,0 +1,5 @@
+herdr-app:
+  output_dir: dist/herdr-app
+  per_theme: true
+  accents: [blue, orange]
+  filename_pattern: "solunized-%{variant}-%{accent}.json"
