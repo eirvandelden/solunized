@@ -85,9 +85,24 @@ def validate_per_theme!(app_file, app_name, app_config)
     raise RuntimeError, "Invalid config in #{app_file}: application '#{app_name}' requires per_theme: true|false"
   end
 
+  validate_accents!("Invalid config in #{app_file}: application '#{app_name}'", app_config)
   return if per_theme || present_string?(app_config["filename"])
 
   raise RuntimeError, "Invalid config in #{app_file}: application '#{app_name}' requires filename"
+end
+
+# A target with accents writes one file per variant and accent.
+#: (String prefix, Hash[String, untyped] app_config) -> void
+def validate_accents!(prefix, app_config)
+  return unless app_config.key?("accents")
+
+  accents = app_config["accents"]
+  raise RuntimeError, "#{prefix} requires accents to be a list of palette names" unless accent_names?(accents)
+end
+
+#: (untyped value) -> bool
+def accent_names?(value)
+  value.is_a?(Array) && value.all? { |name| present_string?(name) }
 end
 
 # An add_ons application writes one add-on directory and zip per entry, so it needs a
