@@ -64,11 +64,11 @@ sequenceDiagram
 `generate_themes.rb`:
 
 - `ErbContext` — looks up a variant's colors for a template. New keyword `accent:` (default `nil`), its reader, and a method that names its own output file (tell, don't ask):
-  - `#: (any_hash, ?String?, ?any_hash?, ?plutil_command: String, ?plutil_env: str_hash, ?add_on: str_hash?, ?accent: String?) -> void` above `def initialize`. This makes seven parameters, one more than today; `rubocop-rails-omakase` turns `Metrics/ParameterLists` off, and every new one is an optional keyword.
+  - `#: (any_hash, ?String?, ?any_hash?, ?plutil_command: String, ?plutil_env: str_hash, ?add_on: str_hash?, ?accent: String?) -> void` above `def initialize`. This makes seven parameters, one more than today; `rubocop-rails-omakase` turns `Metrics/ParameterLists` off, and every new one is an optional keyword. The annotation and the parameter list each span several lines to stay under 120 characters; the `#:` continuation lines are indented, which `rbs-inline` reads as one signature.
   - `attr_reader :accent #: String?` — the palette name of the accent being rendered; nil for a target without `accents`.
   - `#: (String pattern) -> String` above `def filename(pattern)` — formats the pattern with `variant`, `display_name` and `accent`.
 - `process_erb_app(themes, app_config, erb_file, ...)` — unchanged signature. Inside the existing `themes.each`, it loops over `(app_config["accents"] || [nil])`, builds one `ErbContext` per variant and accent, and writes `File.join(output_dir, ctx.filename(pattern))`. No new helper and no `Data.define`. Without `accents` it renders once per variant, exactly as today.
-- `validate_per_theme!(app_file, app_name, app_config)` — unchanged signature. With `accents` present it refuses: `per_theme: false`; a value that is not a non-empty array of non-empty strings; duplicate accents; a `filename_pattern` without `%{accent}`. Without `accents` it refuses a `filename_pattern` that holds `%{accent}`.
+- `validate_per_theme!(app_file, app_name, app_config)` — unchanged signature. It calls a new `validate_accents!(prefix, app_config)` (with an `accent_names?(value)` predicate), which keeps each method short. With `accents` present it refuses: `per_theme: false`; a value that is not a non-empty array of non-empty strings; duplicate accents; a `filename_pattern` without `%{accent}`. Without `accents` it refuses a `filename_pattern` that holds `%{accent}`.
 - `validate_add_ons!(app_file, app_name, app_config)` — unchanged signature. Also refuses `accents`.
 
 `applications/herdr-app/configuration.yml` (new):
@@ -169,7 +169,7 @@ Per file: 43 `c()` hash lookups (4 terminal keys, 16 `ansi`, 23 panel colors), o
 
 ## Files that change
 
-- `generate_themes.rb` — `ErbContext` `accent:` keyword and reader; `process_erb_app` loops over `accents`; the per-theme body moves into a helper; `validate_per_theme!` checks `accents`.
+- `generate_themes.rb` — `ErbContext` `accent:` keyword, reader and `#filename`; `process_erb_app` loops over `accents` inside `themes.each`, with no new helper; `validate_per_theme!` checks `accents` through `validate_accents!`; `validate_add_ons!` refuses `accents`.
 - `applications/herdr-app/configuration.yml` — new target.
 - `applications/herdr-app/template.json.erb` — new template.
 - `test/generate_themes_test.rb` — `ProcessErbAppTest` accent tests; new `AccentsConfigValidationTest` (modelled on `AddOnConfigValidationTest`); new `HerdrAppApplicationTest` after `HerdrApplicationTest`; two small test modules shared by test classes, `WcagContrast` (`contrast_ratio`, moved out of `SlackApplicationTest`) and `GhosttyConfig` (parses a rendered Ghostty file into `background`, `foreground`, `cursor-color`, `selection-background` and `palette`; replaces `GlowApplicationTest#ghostty_palette`), included where used; one count line in `FullApplicationIntegrationTest`.
