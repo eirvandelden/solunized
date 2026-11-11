@@ -42,6 +42,7 @@ THEMES = { "dark" => DARK_THEME, "light" => LIGHT_THEME }.freeze
 
 # The WCAG 2 contrast ratio of two #rrggbb colours, from 1.0 to 21.0.
 module WcagContrast
+  #: (String hex_a, String hex_b) -> Float
   def contrast_ratio(hex_a, hex_b)
     lighter, darker = [ relative_luminance(hex_a), relative_luminance(hex_b) ].sort.reverse
     (lighter + 0.05) / (darker + 0.05)
@@ -49,11 +50,13 @@ module WcagContrast
 
   private
 
+  #: (String hex) -> Float
   def relative_luminance(hex)
     r, g, b = hex.delete_prefix("#").scan(/../).map { |c| linearize(c.to_i(16) / 255.0) }
     0.2126 * r + 0.7152 * g + 0.0722 * b
   end
 
+  #: (Float channel) -> Float
   def linearize(channel)
     channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055)**2.4
   end
@@ -63,6 +66,7 @@ end
 module GhosttyConfig
   GHOSTTY_COLOUR_SETTINGS = %w[background foreground cursor-color selection-background].freeze
 
+  #: (String path) -> Hash[String, String | Array[String]]
   def ghostty_config(path)
     text = File.read(path, encoding: "UTF-8")
     settings = text.scan(/^([a-z-]+) = (#\h{6})$/).to_h.slice(*GHOSTTY_COLOUR_SETTINGS)
