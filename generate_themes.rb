@@ -97,12 +97,12 @@ def validate_accents!(prefix, app_config)
   return unless app_config.key?("accents")
 
   accents = app_config["accents"]
-  raise RuntimeError, "#{prefix} requires accents to be a list of palette names" unless accent_names?(accents)
+  raise RuntimeError, "#{prefix} requires accents to be a non-empty list of palette names" unless accent_names?(accents)
 end
 
 #: (untyped value) -> bool
 def accent_names?(value)
-  value.is_a?(Array) && value.all? { |name| present_string?(name) }
+  value.is_a?(Array) && !value.empty? && value.all? { |name| present_string?(name) }
 end
 
 # An add_ons application writes one add-on directory and zip per entry, so it needs a
