@@ -885,8 +885,8 @@ class HerdrAppApplicationTest < Minitest::Test
   end
 
   def test_each_file_parses_as_json
-    Dir.glob(File.join(@herdr_app_dir, "*.json")).each do |path|
-      assert_kind_of Hash, JSON.parse(File.read(path, encoding: "UTF-8")), path
+    each_theme_file do |theme, label|
+      assert_kind_of Hash, theme, label
     end
   end
 
