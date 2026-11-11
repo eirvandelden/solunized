@@ -85,18 +85,41 @@ def validate_per_theme!(app_file, app_name, app_config)
     raise RuntimeError, "Invalid config in #{app_file}: application '#{app_name}' requires per_theme: true|false"
   end
 
+  validate_accents!("Invalid config in #{app_file}: application '#{app_name}'", app_config)
   return if per_theme || present_string?(app_config["filename"])
 
   raise RuntimeError, "Invalid config in #{app_file}: application '#{app_name}' requires filename"
 end
 
+# A target with accents writes one file per variant and accent, so each file name must hold the accent;
+# a target without accents has no accent to put in its file name.
+#: (String prefix, Hash[String, untyped] app_config) -> void
+def validate_accents!(prefix, app_config)
+  names_accent = app_config["filename_pattern"].to_s.include?("%{accent}")
+  return if !app_config.key?("accents") && !names_accent
+  raise RuntimeError, "#{prefix} names %{accent} in filename_pattern without accents" unless app_config.key?("accents")
+
+  accents = app_config["accents"]
+  raise RuntimeError, "#{prefix} requires accents to be a non-empty list of palette names" unless accent_names?(accents)
+  raise RuntimeError, "#{prefix} lists an accent more than once in accents" unless accents.uniq == accents
+  raise RuntimeError, "#{prefix} requires per_theme: true with accents" unless app_config["per_theme"]
+  raise RuntimeError, "#{prefix} requires %{accent} in filename_pattern with accents" unless names_accent
+end
+
+#: (untyped value) -> bool
+def accent_names?(value)
+  value.is_a?(Array) && !value.empty? && value.all? { |name| present_string?(name) }
+end
+
 # An add_ons application writes one add-on directory and zip per entry, so it needs a
 # manifest filename and a version, and each entry needs a name, id and two variants.
+# It renders no accents.
 #: (String app_file, String app_name, Hash[String, untyped] app_config) -> void
 def validate_add_ons!(app_file, app_name, app_config)
   prefix = "Invalid config in #{app_file}: application '#{app_name}'"
   add_ons = app_config["add_ons"]
   raise RuntimeError, "#{prefix} requires add_ons to be a non-empty mapping" unless non_empty_hash?(add_ons)
+  raise RuntimeError, "#{prefix} cannot combine accents with add_ons" if app_config.key?("accents")
 
   %w[filename version].each do |key|
     raise RuntimeError, "#{prefix} requires #{key}" unless present_string?(app_config[key])
@@ -245,14 +268,20 @@ rescue Errno::ENOENT
 end
 
 class ErbContext
-  #: (any_hash, ?String?, ?any_hash?, ?plutil_command: String, ?plutil_env: str_hash, ?add_on: str_hash?) -> void
-  def initialize(themes, variant = nil, theme_data = nil, plutil_command: "plutil", plutil_env: {}, add_on: nil)
+  #: (
+  #    any_hash, ?String?, ?any_hash?,
+  #    ?plutil_command: String, ?plutil_env: str_hash, ?add_on: str_hash?, ?accent: String?
+  #  ) -> void
+  def initialize(
+    themes, variant = nil, theme_data = nil, plutil_command: "plutil", plutil_env: {}, add_on: nil, accent: nil
+  )
     @themes     = themes
     @variant    = variant
     @theme_data = theme_data
     @plutil_command = plutil_command
     @plutil_env = plutil_env
     @add_on     = add_on
+    @accent     = accent
   end
 
   attr_reader :themes #: Hash[String, untyped]
@@ -260,6 +289,8 @@ class ErbContext
   attr_reader :theme_data #: Hash[String, untyped]?
   # add_on is the settings hash of the Firefox add-on being rendered, nil for every other template.
   attr_reader :add_on #: Hash[String, String]?
+  # accent is the palette name of the accent being rendered, nil for a target without accents.
+  attr_reader :accent #: String?
 
   # Look up a colour hex value for a given variant and colour key.
   #: (String | Symbol v, String | Symbol name) -> String
@@ -279,6 +310,12 @@ class ErbContext
     return colors[color_key] if colors.key?(color_key)
 
     raise RuntimeError, "Unknown colour key '#{color_key}' for variant '#{variant_key}'"
+  end
+
+  # The output file name: pattern formatted with this variant, its display name and the accent.
+  #: (String pattern) -> String
+  def filename(pattern)
+    format(pattern, variant: variant, display_name: theme_data["display_name"], accent: accent)
   end
 
   # Return the interface style ("dark" or "light") for a given variant.
@@ -318,17 +355,20 @@ def process_erb_app(themes, app_config, erb_file, plutil_command: "plutil", plut
   return process_add_ons(themes, app_config, template) if app_config.key?("add_ons")
 
   if app_config["per_theme"]
+    # Default pattern produces filenames like "dark", "light", etc.
+    # Override with e.g. "solunized-%{variant}" or "%{display_name}.terminal".
+    pattern = app_config["filename_pattern"] || "%{variant}"
     themes.each do |variant, theme_data|
-      ctx      = ErbContext.new(
-        themes, variant, theme_data, plutil_command: plutil_command, plutil_env: plutil_env
-      )
-      content  = template.result(ctx.get_binding)
-      # Default pattern produces filenames like "dark", "light", etc.
-      # Override with e.g. "solunized-%{variant}" or "%{display_name}.terminal".
-      pattern  = app_config["filename_pattern"] || "%{variant}"
-      filename = File.join(output_dir, format(pattern, variant: variant, display_name: theme_data["display_name"]))
-      File.write(filename, content)
-      puts "Generated #{filename}"
+      # A target with accents renders once per accent; any other target once per variant.
+      (app_config["accents"] || [ nil ]).each do |accent|
+        ctx      = ErbContext.new(
+          themes, variant, theme_data, plutil_command: plutil_command, plutil_env: plutil_env, accent: accent
+        )
+        content  = template.result(ctx.get_binding)
+        filename = File.join(output_dir, ctx.filename(pattern))
+        File.write(filename, content)
+        puts "Generated #{filename}"
+      end
     end
   else
     ctx      = ErbContext.new(themes, nil, nil, plutil_command: plutil_command, plutil_env: plutil_env)

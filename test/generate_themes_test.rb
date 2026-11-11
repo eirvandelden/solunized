@@ -37,6 +37,46 @@ LIGHT_THEME = {
 THEMES = { "dark" => DARK_THEME, "light" => LIGHT_THEME }.freeze
 
 # ---------------------------------------------------------------------------
+# Shared test helpers
+# ---------------------------------------------------------------------------
+
+# The WCAG 2 contrast ratio of two #rrggbb colours, from 1.0 to 21.0.
+module WcagContrast
+  #: (String hex_a, String hex_b) -> Float
+  def contrast_ratio(hex_a, hex_b)
+    lighter, darker = [ relative_luminance(hex_a), relative_luminance(hex_b) ].sort.reverse
+    (lighter + 0.05) / (darker + 0.05)
+  end
+
+  private
+
+  #: (String hex) -> Float
+  def relative_luminance(hex)
+    r, g, b = hex.delete_prefix("#").scan(/../).map { |c| linearize(c.to_i(16) / 255.0) }
+    0.2126 * r + 0.7152 * g + 0.0722 * b
+  end
+
+  #: (Float channel) -> Float
+  def linearize(channel)
+    channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055)**2.4
+  end
+end
+
+# Parses a rendered Ghostty config into its colour settings and its palette, ordered from slot 0 to 15.
+module GhosttyConfig
+  GHOSTTY_COLOUR_SETTINGS = %w[background foreground cursor-color selection-background].freeze
+
+  #: (String path) -> Hash[String, String | Array[String]]
+  def ghostty_config(path)
+    text = File.read(path, encoding: "UTF-8")
+    settings = text.scan(/^([a-z-]+) = (#\h{6})$/).to_h.slice(*GHOSTTY_COLOUR_SETTINGS)
+    palette = text.scan(/^palette = (\d+)=(#\h{6})$/).sort_by { |index, _| index.to_i }.map(&:last)
+
+    settings.merge("palette" => palette)
+  end
+end
+
+# ---------------------------------------------------------------------------
 # Nova application
 # ---------------------------------------------------------------------------
 
@@ -81,6 +121,8 @@ end
 # ---------------------------------------------------------------------------
 
 class GlowApplicationTest < Minitest::Test
+  include GhosttyConfig
+
   CHROMA_SLOTS = {
     "#ansidarkred" => 1, "#ansidarkgreen" => 2, "#ansidarkblue" => 4, "#ansipurple" => 5, "#ansiteal" => 6
   }.freeze
@@ -192,18 +234,12 @@ class GlowApplicationTest < Minitest::Test
 
   def assert_ghostty_palette_matches_slots
     @themes.each_key do |variant|
-      palette = ghostty_palette(variant)
+      palette = ghostty_config(File.join(@ghostty_dir, "solunized-#{variant}")).fetch("palette")
 
       GHOSTTY_SLOTS.each do |name, index|
         assert_equal @themes[variant]["colors"][name], palette[index], "#{variant} #{name} slot #{index}"
       end
     end
-  end
-
-  def ghostty_palette(variant)
-    File.read(File.join(@ghostty_dir, "solunized-#{variant}"), encoding: "UTF-8")
-      .scan(/^palette = (\d+)=(#\h+)$/)
-      .to_h { |index, hex| [ index.to_i, hex ] }
   end
 end
 
@@ -287,6 +323,67 @@ class ProcessErbAppTest < Minitest::Test
     end
 
     assert_match(/Unknown colour key/, error.message)
+  end
+
+  def test_per_theme_without_accents_writes_one_file_per_variant
+    erb_file = File.join(@tmpdir, "test.erb")
+    File.write(erb_file, "<%= variant %>\n")
+
+    config = {
+      "output_dir"       => File.join(@tmpdir, "out"),
+      "per_theme"        => true,
+      "filename_pattern" => "%{variant}.txt"
+    }
+    process_erb_app(THEMES, config, erb_file)
+
+    assert_equal %w[dark.txt light.txt], Dir.children(File.join(@tmpdir, "out")).sort
+  end
+
+  def test_per_theme_with_accents_writes_one_file_per_variant_and_accent
+    erb_file = File.join(@tmpdir, "test.erb")
+    File.write(erb_file, "<%= variant %>\n")
+
+    process_erb_app(THEMES, accents_config, erb_file)
+
+    assert_equal %w[dark-blue.txt dark-fg_1.txt light-blue.txt light-fg_1.txt],
+      Dir.children(File.join(@tmpdir, "out")).sort
+  end
+
+  def test_template_reads_the_accent_being_rendered
+    erb_file = File.join(@tmpdir, "test.erb")
+    File.write(erb_file, "<%= accent %>: <%= c(variant, accent) %>\n")
+
+    process_erb_app(THEMES, accents_config, erb_file)
+
+    assert_equal "blue: #4488ff\n", File.read(File.join(@tmpdir, "out", "dark-blue.txt"), encoding: "UTF-8")
+    assert_equal "fg_1: #111111\n", File.read(File.join(@tmpdir, "out", "light-fg_1.txt"), encoding: "UTF-8")
+  end
+
+  private
+
+  def accents_config
+    {
+      "output_dir"       => File.join(@tmpdir, "out"),
+      "per_theme"        => true,
+      "accents"          => %w[blue fg_1],
+      "filename_pattern" => "%{variant}-%{accent}.txt"
+    }
+  end
+end
+
+# ---------------------------------------------------------------------------
+# ErbContext
+# ---------------------------------------------------------------------------
+
+class ErbContextTest < Minitest::Test
+  def test_accent_is_nil_by_default
+    assert_nil ErbContext.new(THEMES, "dark", DARK_THEME).accent
+  end
+
+  def test_filename_formats_variant_display_name_and_accent
+    ctx = ErbContext.new(THEMES, "dark", DARK_THEME, accent: "blue")
+
+    assert_equal "Test Dark/dark-blue.json", ctx.filename("%{display_name}/%{variant}-%{accent}.json")
   end
 end
 
@@ -746,10 +843,191 @@ class HerdrApplicationTest < Minitest::Test
 end
 
 # ---------------------------------------------------------------------------
+# herdr-app application
+# ---------------------------------------------------------------------------
+
+class HerdrAppApplicationTest < Minitest::Test
+  include GhosttyConfig
+  include WcagContrast
+
+  ACCENTS = %w[blue orange].freeze
+
+  # The 23 panel colour names herdr-app 0.1.15 documents, kept here independently of the template.
+  DOCUMENTED_PANEL_COLOR_NAMES = %w[
+    background canvas chrome surface popover raised hover selected border input foreground muted dim
+    accent accent_foreground solid solid_foreground selection working blocked done idle unknown
+  ].freeze
+
+  # Every panel colour except accent, which is the accent of its file.
+  PANEL_PALETTE_NAMES = {
+    "background" => "bg_0", "canvas" => "bg_1", "chrome" => "bg_1", "surface" => "bg_1", "popover" => "bg_1",
+    "raised" => "bg_0", "hover" => "bg_2", "selected" => "bg_0", "border" => "bg_2", "input" => "dim_0",
+    "foreground" => "fg_1", "muted" => "fg_0", "dim" => "dim_0", "accent_foreground" => "bg_0",
+    "solid" => "fg_1", "solid_foreground" => "bg_0", "selection" => "bg_1", "working" => "br_yellow",
+    "blocked" => "br_red", "done" => "br_green", "idle" => "dim_0", "unknown" => "dim_0"
+  }.freeze
+
+  def setup
+    @herdr_app_dir = Dir.mktmpdir
+    @ghostty_dir = Dir.mktmpdir
+    @workspace_root = File.expand_path("..", __dir__)
+    @themes = YAML.load_file(File.join(@workspace_root, "themes.yml"))["themes"]
+
+    generate("herdr-app", "template.json.erb", @herdr_app_dir)
+    generate("ghostty", "template.config.erb", @ghostty_dir)
+  end
+
+  def teardown
+    FileUtils.rm_rf(@herdr_app_dir)
+    FileUtils.rm_rf(@ghostty_dir)
+  end
+
+  def test_writes_two_json_files_per_variant
+    expected = @themes.keys.product(ACCENTS).map { |variant, accent| "solunized-#{variant}-#{accent}.json" }
+
+    assert_equal expected.sort, Dir.children(@herdr_app_dir).sort
+  end
+
+  def test_each_file_parses_as_json
+    each_theme_file do |theme, label|
+      assert_kind_of Hash, theme, label
+    end
+  end
+
+  def test_ansi_holds_sixteen_colors
+    each_theme_file do |theme, label|
+      assert_equal 16, theme.fetch("ansi").size, label
+    end
+  end
+
+  def test_terminal_colors_equal_the_ghostty_colors
+    each_theme_file do |theme, label, variant|
+      ghostty = ghostty_config(File.join(@ghostty_dir, "solunized-#{variant}"))
+
+      assert_equal ghostty.fetch("background"), theme.fetch("background"), label
+      assert_equal ghostty.fetch("foreground"), theme.fetch("foreground"), label
+      assert_equal ghostty.fetch("cursor-color"), theme.fetch("cursor"), label
+      assert_equal ghostty.fetch("selection-background"), theme.fetch("selection"), label
+      assert_equal ghostty.fetch("palette"), theme.fetch("ansi"), label
+      assert_equal ghostty.fetch("background"), theme.fetch("colors").fetch("background"), label
+      assert_equal ghostty.fetch("foreground"), theme.fetch("colors").fetch("foreground"), label
+      assert_equal ghostty.fetch("selection-background"), theme.fetch("colors").fetch("selection"), label
+    end
+  end
+
+  def test_blue_accent_is_the_variant_blue
+    assert_equal "#4191f4", accent_of("dark", "blue")
+    assert_equal "#0068c9", accent_of("light", "blue")
+    @themes.each do |variant, theme_data|
+      assert_equal theme_data["colors"]["blue"], accent_of(variant, "blue"), variant
+    end
+  end
+
+  def test_orange_accent_is_the_variant_orange
+    assert_equal "#ea8347", accent_of("dark", "orange")
+    assert_equal "#b05015", accent_of("light", "orange")
+    @themes.each do |variant, theme_data|
+      assert_equal theme_data["colors"]["orange"], accent_of(variant, "orange"), variant
+    end
+  end
+
+  def test_orange_file_differs_from_blue_only_in_the_accent
+    @themes.each_key do |variant|
+      blue = theme_file(variant, "blue")
+      orange = theme_file(variant, "orange")
+
+      refute_equal blue.dig("colors", "accent"), orange.dig("colors", "accent"), variant
+      assert_equal without_accent(blue), without_accent(orange), variant
+    end
+  end
+
+  def test_colors_holds_exactly_the_documented_panel_color_names
+    assert_equal 23, DOCUMENTED_PANEL_COLOR_NAMES.uniq.size
+    each_theme_file do |theme, label|
+      assert_equal DOCUMENTED_PANEL_COLOR_NAMES.sort, theme.fetch("colors").keys.sort, label
+    end
+  end
+
+  def test_maps_each_panel_color_to_its_palette_name
+    each_theme_file do |theme, label, variant, accent|
+      palette = @themes.fetch(variant).fetch("colors")
+
+      PANEL_PALETTE_NAMES.merge("accent" => accent).each do |panel_color, palette_name|
+        assert_equal palette.fetch(palette_name), theme.fetch("colors").fetch(panel_color), "#{label} #{panel_color}"
+      end
+    end
+  end
+
+  def test_every_color_comes_from_the_variant_palette
+    each_theme_file do |theme, label, variant|
+      palette = @themes.fetch(variant).fetch("colors").values
+
+      colours_in(theme).each do |colour|
+        assert_match(/\A#[0-9a-f]{6}\z/, colour, label)
+        assert_includes palette, colour, label
+      end
+    end
+  end
+
+  def test_accent_and_solid_text_meet_wcag_aa
+    each_theme_file do |theme, label|
+      colors = theme.fetch("colors")
+
+      assert_operator contrast_ratio(colors.fetch("accent"), colors.fetch("accent_foreground")), :>=, 4.5,
+        "#{label} accent_foreground on accent"
+      assert_operator contrast_ratio(colors.fetch("solid"), colors.fetch("solid_foreground")), :>=, 4.5,
+        "#{label} solid_foreground on solid"
+    end
+  end
+
+  def test_the_template_holds_no_hex_colour
+    template = File.read(File.join(@workspace_root, "applications/herdr-app/template.json.erb"), encoding: "UTF-8")
+
+    refute_match(/#[0-9A-Fa-f]{6}/, template)
+  end
+
+  private
+
+  def generate(app, template, output_dir)
+    config = YAML.load_file(File.join(@workspace_root, "applications/#{app}/configuration.yml")).fetch(app)
+    config["output_dir"] = output_dir
+    process_erb_app(@themes, config, File.join(@workspace_root, "applications/#{app}/#{template}"))
+  end
+
+  def each_theme_file
+    @themes.keys.product(ACCENTS).each do |variant, accent|
+      yield theme_file(variant, accent), "#{variant}-#{accent}", variant, accent
+    end
+  end
+
+  def theme_file(variant, accent)
+    JSON.parse(File.read(File.join(@herdr_app_dir, "solunized-#{variant}-#{accent}.json"), encoding: "UTF-8"))
+  end
+
+  def accent_of(variant, accent)
+    theme_file(variant, accent).fetch("colors").fetch("accent")
+  end
+
+  def without_accent(theme)
+    theme.merge("colors" => theme.fetch("colors").except("accent"))
+  end
+
+  def colours_in(node)
+    case node
+    when Hash then node.values.flat_map { |value| colours_in(value) }
+    when Array then node.flat_map { |value| colours_in(value) }
+    else [ node ]
+    end
+  end
+end
+
+# ---------------------------------------------------------------------------
 # slack application
 # ---------------------------------------------------------------------------
 
 class SlackApplicationTest < Minitest::Test
+  include WcagContrast
+
   def setup
     @tmpdir = Dir.mktmpdir
     @workspace_root = File.expand_path("..", __dir__)
@@ -784,22 +1062,6 @@ class SlackApplicationTest < Minitest::Test
 
   def test_explains_the_sidebar_only_limitation
     assert_match(/sidebar/i, @content)
-  end
-
-  private
-
-  def contrast_ratio(hex_a, hex_b)
-    lighter, darker = [ relative_luminance(hex_a), relative_luminance(hex_b) ].sort.reverse
-    (lighter + 0.05) / (darker + 0.05)
-  end
-
-  def relative_luminance(hex)
-    r, g, b = hex.delete_prefix("#").scan(/../).map { |c| linearize(c.to_i(16) / 255.0) }
-    0.2126 * r + 0.7152 * g + 0.0722 * b
-  end
-
-  def linearize(channel)
-    channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055)**2.4
   end
 end
 
@@ -1017,6 +1279,105 @@ class AddOnConfigValidationTest < Minitest::Test
   end
 end
 
+class AccentsConfigValidationTest < Minitest::Test
+  def setup
+    @tmpdir = Dir.mktmpdir
+    @themes_yml = File.join(@tmpdir, "themes.yml")
+    File.write(@themes_yml, YAML.dump({ "themes" => THEMES }))
+    @apps_dir = File.join(@tmpdir, "apps")
+    @app_dir = File.join(@apps_dir, "panel")
+    FileUtils.mkdir_p(@app_dir)
+    File.write(File.join(@app_dir, "template.txt.erb"), "ok\n")
+  end
+
+  def teardown
+    FileUtils.rm_rf(@tmpdir)
+  end
+
+  def test_rejects_accents_that_are_not_a_list_of_names
+    [ "blue", "{ blue: true }", "[blue, 3]", '[blue, ""]', "[blue, [fg_1]]" ].each do |accents|
+      write_config("accents: #{accents}")
+
+      error = assert_raises(RuntimeError, accents) { generate }
+
+      assert_match(/Invalid config.*accents/, error.message, accents)
+    end
+  end
+
+  def test_rejects_an_empty_accents_list
+    write_config("accents: []")
+
+    error = assert_raises(RuntimeError) { generate }
+
+    assert_match(/Invalid config.*accents/, error.message)
+  end
+
+  def test_rejects_duplicate_accents
+    write_config("accents: [blue, fg_1, blue]")
+
+    error = assert_raises(RuntimeError) { generate }
+
+    assert_match(/Invalid config.*accents/, error.message)
+  end
+
+  def test_rejects_accents_without_per_theme
+    write_config("accents: [blue, fg_1]", per_theme: false)
+
+    error = assert_raises(RuntimeError) { generate }
+
+    assert_match(/Invalid config.*accents/, error.message)
+  end
+
+  def test_rejects_accents_without_the_accent_placeholder
+    write_config("accents: [blue, fg_1]", pattern: "%{variant}.txt")
+
+    error = assert_raises(RuntimeError) { generate }
+
+    assert_match(/Invalid config.*%\{accent\}/, error.message)
+  end
+
+  def test_rejects_the_accent_placeholder_without_accents
+    write_config("")
+
+    error = assert_raises(RuntimeError) { generate }
+
+    assert_match(/Invalid config.*%\{accent\}/, error.message)
+  end
+
+  def test_rejects_accents_on_an_add_ons_target
+    File.write(File.join(@app_dir, "configuration.yml"), <<~YAML)
+      panel:
+        output_dir: #{@tmpdir}/out
+        filename: manifest.json
+        version: "1.0.0"
+        accents: [blue, fg_1]
+        add_ons:
+          pair: { name: Pair, id: a@example.test, theme: light, dark_theme: dark }
+    YAML
+
+    error = assert_raises(RuntimeError) { generate }
+
+    assert_match(/Invalid config.*accents/, error.message)
+  end
+
+  private
+
+  def write_config(accents_line, per_theme: true, pattern: "%{variant}-%{accent}.txt")
+    File.write(File.join(@app_dir, "configuration.yml"), <<~YAML)
+      panel:
+        output_dir: #{@tmpdir}/out
+        per_theme: #{per_theme}
+        filename: all.txt
+        filename_pattern: "#{pattern}"
+        #{accents_line}
+    YAML
+  end
+
+  def generate
+    process_all_apps(themes_yml: @themes_yml, apps_dir: @apps_dir)
+  end
+end
+
 class FirefoxApplicationTest < Minitest::Test
   # The 38 current MDN theme.colors keys, kept here independently of the template.
   FIREFOX_COLOR_KEYS = %w[
@@ -1179,6 +1540,7 @@ class FullApplicationIntegrationTest < Minitest::Test
     assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "nova", "Themes", "*.css")).size
     assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "mvpa-css", "*.css")).size
     assert_equal 4, Dir.glob(File.join(@tmpdir, "out", "herdr", "*.toml")).size
+    assert_equal 8, Dir.glob(File.join(@tmpdir, "out", "herdr-app", "*.json")).size
     assert_equal [], Dir.glob(File.join(@tmpdir, "out", "terminal", "*"))
   end
 
