@@ -210,6 +210,7 @@ Per file: 43 `c()` hash lookups (4 terminal keys, 16 `ansi`, 23 panel colors), o
 - Dark blue accent `#4191f4`, light `#0068c9` → `HerdrAppApplicationTest#test_blue_accent_is_the_variant_blue`
 - Orange file equals blue except the accent, `#ea8347` in dark and `#b05015` in light → `HerdrAppApplicationTest#test_orange_file_differs_from_blue_only_in_the_accent`, `#test_orange_accent_is_the_variant_orange`
 - herdr-app shows Ghostty's light colors and a sidebar in the palette → check: step 8 sandbox screenshots, with the colors sampled from the PNG
+- Invariant: `ansi` holds exactly 16 colors → `#test_ansi_holds_sixteen_colors`
 - Invariant: `colors` holds exactly the 23 names, enforced by the template literal → `#test_colors_holds_exactly_the_documented_panel_color_names`
 - Invariant: mapping per table → `#test_maps_each_panel_color_to_its_palette_name`
 - Invariant: every color from the variant palette → `#test_every_color_comes_from_the_variant_palette`
