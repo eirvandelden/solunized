@@ -245,14 +245,20 @@ rescue Errno::ENOENT
 end
 
 class ErbContext
-  #: (any_hash, ?String?, ?any_hash?, ?plutil_command: String, ?plutil_env: str_hash, ?add_on: str_hash?) -> void
-  def initialize(themes, variant = nil, theme_data = nil, plutil_command: "plutil", plutil_env: {}, add_on: nil)
+  #: (
+  #    any_hash, ?String?, ?any_hash?,
+  #    ?plutil_command: String, ?plutil_env: str_hash, ?add_on: str_hash?, ?accent: String?
+  #  ) -> void
+  def initialize(
+    themes, variant = nil, theme_data = nil, plutil_command: "plutil", plutil_env: {}, add_on: nil, accent: nil
+  )
     @themes     = themes
     @variant    = variant
     @theme_data = theme_data
     @plutil_command = plutil_command
     @plutil_env = plutil_env
     @add_on     = add_on
+    @accent     = accent
   end
 
   attr_reader :themes #: Hash[String, untyped]
@@ -260,6 +266,8 @@ class ErbContext
   attr_reader :theme_data #: Hash[String, untyped]?
   # add_on is the settings hash of the Firefox add-on being rendered, nil for every other template.
   attr_reader :add_on #: Hash[String, String]?
+  # accent is the palette name of the accent being rendered, nil for a target without accents.
+  attr_reader :accent #: String?
 
   # Look up a colour hex value for a given variant and colour key.
   #: (String | Symbol v, String | Symbol name) -> String
