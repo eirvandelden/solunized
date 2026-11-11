@@ -59,12 +59,14 @@ When `plutil` is unavailable (common on Linux), Terminal.app generation is skipp
    - `per_theme` — `true` for one output file per variant, `false` for one combined file
    - `add_ons`, `filename` and `version` — instead of `per_theme`, for a Firefox add-on: one entry per add-on, each with `name`, `id`, `theme` and `dark_theme`; the generator writes `<output_dir>/<entry>/<filename>` and `<output_dir>/<entry>.zip` for each
    - `filename_pattern` (when `per_theme: true`) — e.g. `"solunized-%{variant}.css"`, or `filename` (when `per_theme: false`) — e.g. `"colors.md"`
+   - `accents` (optional, when `per_theme: true`) — a list of palette names, e.g. `[blue, orange]`; the generator writes one file per variant and accent, so `filename_pattern` must hold `%{accent}`, e.g. `"solunized-%{variant}-%{accent}.json"`
 2. Add `applications/<appname>/template.<ext>.erb`, naming the output format, e.g. `template.md.erb` for Markdown, `template.css.erb` for CSS.
 3. In the template:
    - `c(variant, 'colour_name')` resolves a colour to its hex value
    - `appearance(variant)` resolves to `"dark"` or `"light"`
    - `hex_to_term_color(hex)` converts a hex colour to the binary NSColor plist data Terminal.app profiles need
    - An `add_ons` template gets `add_on`, the settings of the add-on being rendered (`name`, `id`, `theme`, `dark_theme`, plus the shared `version` and the entry's `slug`)
+   - A template whose target has `accents` gets `accent`, the palette name being rendered
    - A `per_theme: true` template also gets `theme_data`, the current variant's metadata hash (`display_name`, `interface_style`, `accent_color`); a `per_theme: false` template loops over `themes` itself and reads that same hash per iteration
 
 ### Supported applications
@@ -78,6 +80,7 @@ When `plutil` is unavailable (common on Linux), Terminal.app generation is skipp
 | [Terminal.app](https://support.apple.com/guide/terminal/welcome/mac) | [`applications/terminal/configuration.yml`](applications/terminal/configuration.yml) |
 | [Zed](https://zed.dev) | [`applications/zed/configuration.yml`](applications/zed/configuration.yml) |
 | Herdr | [`applications/herdr/configuration.yml`](applications/herdr/configuration.yml) |
+| Herdr app | [`applications/herdr-app/configuration.yml`](applications/herdr-app/configuration.yml) |
 | [Glow](https://github.com/charmbracelet/glow) | [`applications/glow/configuration.yml`](applications/glow/configuration.yml) — one style that uses only the terminal's ANSI palette, so it shows Solunized colours only in a terminal running a Solunized palette, such as Ghostty |
 | [Slack](https://slack.com) | [`applications/slack/configuration.yml`](applications/slack/configuration.yml) — generates [`docs/slack.md`](docs/slack.md), a guide to pasting a custom theme in by hand |
 | [Firefox](https://www.mozilla.org/firefox/) | [`applications/firefox/configuration.yml`](applications/firefox/configuration.yml) — two add-ons: light and dark (`theme` and `dark_theme`), white and black; see [Signing the Firefox add-ons](#signing-the-firefox-add-ons) |
